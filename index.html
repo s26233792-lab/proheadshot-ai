@@ -1057,6 +1057,12 @@
         function tryOpenSettings() {
             if (config.isAdmin) {
                 openModal('settings-modal');
+                // 填充表单值
+                document.getElementById('api-base-url-input').value = config.baseUrl;
+                document.getElementById('api-model-input').value = config.modelId;
+                document.getElementById('api-key-input').value = config.userKey;
+                document.getElementById('github-token-input').value = config.githubToken || '';
+                els.autoCleanCheck.checked = config.autoCleanPath;
                 updateUrlPreview();
             } else {
                 openModal('admin-login-modal');
@@ -1150,6 +1156,7 @@
                     if (data.baseUrl) config.baseUrl = data.baseUrl;
                     if (data.modelId) config.modelId = data.modelId;
                     if (typeof data.autoCleanPath === 'boolean') config.autoCleanPath = data.autoCleanPath;
+                    if (data.githubToken) config.githubToken = data.githubToken;
                 }
             } catch (e) {}
         }
