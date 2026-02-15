@@ -5,16 +5,19 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-export async function GET(request) {
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
     const POSTGRES_URL = process.env.POSTGRES_URL;
     if (!POSTGRES_URL) {
-      return Response.json({ error: '数据库未配置' }, { status: 500 });
+      return res.status(500).json({ error: '数据库未配置' });
     }
 
     const pool = new Pool({ connectionString: POSTGRES_URL });
 
-    // 基本统计
     const statsResult = await pool.query(`
       SELECT
         COUNT(*) as total,
@@ -24,7 +27,6 @@ export async function GET(request) {
       FROM verification_codes
     `);
 
-    // 今日使用统计
     const todayResult = await pool.query(`
       SELECT COUNT(*) as today_used
       FROM usage_logs
@@ -33,13 +35,13 @@ export async function GET(request) {
 
     await pool.end();
 
-    return Response.json({
+    return res.json({
       stats: statsResult.rows[0],
       today: todayResult.rows[0]
     });
 
   } catch (error) {
     console.error('获取统计失败:', error);
-    return Response.json({ error: '获取失败' }, { status: 500 });
+    return res.status(500).json({ error: '获取失败' });
   }
 }

@@ -1,12 +1,15 @@
 /**
- * 数据库初始化 API - 使用 pg 连接
+ * 数据库初始化 API
  */
 
 import pg from 'pg';
-
 const { Pool } = pg;
 
-export async function GET(request) {
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   const logs = [];
 
   try {
@@ -14,20 +17,15 @@ export async function GET(request) {
 
     if (!POSTGRES_URL) {
       logs.push('✗ 错误: POSTGRES_URL 环境变量未配置');
-      return new Response(getErrorHtml(logs, 'POSTGRES_URL 环境变量未配置'), {
-        status: 500,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      });
+      return res.status(500).send(getErrorHtml(logs, 'POSTGRES_URL 环境变量未配置'));
     }
 
-    // 创建连接池
     const pool = new Pool({ connectionString: POSTGRES_URL });
 
     logs.push('正在检查数据库连接...');
     const testResult = await pool.query('SELECT NOW() as now');
     logs.push(`✓ 数据库连接成功 (${testResult.rows[0].now})`);
 
-    // 创建表的 SQL 语句
     const tables = [
       `CREATE TABLE IF NOT EXISTS verification_codes (
         code VARCHAR(50) PRIMARY KEY,
@@ -64,7 +62,6 @@ export async function GET(request) {
       logs.push(`✓ ${tableName} 表已创建`);
     }
 
-    // 初始化版本号
     logs.push('正在初始化系统版本...');
     await pool.query(
       `INSERT INTO system_meta (key, value) VALUES ('version', NOW()::TEXT)
@@ -72,14 +69,12 @@ export async function GET(request) {
     );
     logs.push('✓ 系统版本已初始化');
 
-    // 创建索引
     logs.push('正在创建索引...');
     await pool.query(
       'CREATE INDEX IF NOT EXISTS idx_verification_codes_status ON verification_codes(status)'
     );
     logs.push('✓ 索引已创建');
 
-    // 获取统计
     const statsResult = await pool.query(
       `SELECT
         COUNT(*) as total,
@@ -98,16 +93,13 @@ export async function GET(request) {
 
     await pool.end();
 
-    return new Response(getSuccessHtml(logs, stats), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(getSuccessHtml(logs, stats));
 
   } catch (error) {
     logs.push(`✗ 错误: ${error.message}`);
-    return new Response(getErrorHtml(logs, error.message), {
-      status: 500,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(500).send(getErrorHtml(logs, error.message));
   }
 }
 
