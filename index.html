@@ -319,7 +319,7 @@
                         </div>
                     </div>
                     <div><label class="text-xs font-bold text-slate-500 block mb-1">API Key</label><input type="password" id="api-key-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value=""></div>
-                    <div><label class="text-xs font-bold text-slate-500 block mb-1">Model ID</label><input type="text" id="api-model-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value="gemini-2.0-flash-exp" oninput="updateUrlPreview()"></div>
+                    <div><label class="text-xs font-bold text-slate-500 block mb-1">Model ID（固定）</label><input type="text" id="api-model-input" class="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono" value="gemini-3-pro-image-preview" disabled oninput="updateUrlPreview()"></div>
                     <!-- 平台自动发货配置 -->
                     <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
                         <label class="text-xs font-bold text-slate-500 block mb-2">平台 API URL</label>
@@ -435,7 +435,7 @@
             apiKey: "",
             userKey: "",
             baseUrl: "https://new.12ai.org/v1",
-            modelId: "gemini-2.0-flash-exp",
+            modelId: "gemini-3-pro-image-preview",
             autoCleanPath: true,
             adminPwd: "terry_su",
             isAdmin: false,
