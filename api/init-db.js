@@ -2,10 +2,19 @@
  * 数据库初始化 API
  */
 
-import pg from 'pg';
-const { Pool } = pg;
+const { Pool } = require('pg');
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -98,10 +107,11 @@ export default async function handler(req, res) {
 
   } catch (error) {
     logs.push(`✗ 错误: ${error.message}`);
+    console.error('Database init error:', error);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(500).send(getErrorHtml(logs, error.message));
   }
-}
+};
 
 function getSuccessHtml(logs, stats) {
   return `<!DOCTYPE html>
@@ -128,7 +138,6 @@ function getSuccessHtml(logs, stats) {
   </div>
   <h3>下一步</h3>
   <a href="/" class="btn">返回首页</a>
-  <a href="/test-api.html" class="btn">测试 API</a>
 </body>
 </html>`;
 }

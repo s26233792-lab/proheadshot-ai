@@ -2,14 +2,7 @@
   "name": "proheadshot-ai",
   "version": "1.0.0",
   "description": "AI美式照片照相馆 - 专业证件照生成",
-  "scripts": {
-    "build": "echo 'Build complete'"
-  },
   "dependencies": {
     "pg": "^8.11.3"
-  },
-  "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
   }
 }

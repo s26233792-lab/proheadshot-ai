@@ -2,8 +2,7 @@
  * 用户积分 API
  */
 
-import pg from 'pg';
-const { Pool } = pg;
+const { Pool } = require('pg');
 
 function getDeviceId(req) {
   const userAgent = req.headers['user-agent'] || '';
@@ -21,7 +20,17 @@ function getDeviceId(req) {
   return Math.abs(hash).toString(36);
 }
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method === 'GET') {
     try {
       const deviceId = getDeviceId(req);
@@ -49,7 +58,7 @@ export default async function handler(req, res) {
 
     } catch (error) {
       console.error('获取积分失败:', error);
-      return res.status(500).json({ error: '获取失���' });
+      return res.status(500).json({ error: '获取失败' });
     }
   }
 
@@ -113,4 +122,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};

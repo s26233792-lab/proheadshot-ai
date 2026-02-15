@@ -2,8 +2,7 @@
  * 生成验证码 API
  */
 
-import pg from 'pg';
-const { Pool } = pg;
+const { Pool } = require('pg');
 
 function generateCode(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -14,7 +13,17 @@ function generateCode(length = 8) {
   return code;
 }
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method === 'POST') {
     try {
       const { points = 1, amount = 1, codeLength = 8 } = req.body;
@@ -116,4 +125,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+};
