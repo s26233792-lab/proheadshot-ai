@@ -330,6 +330,12 @@
                             <i class="fa-solid fa-sync mr-2"></i> 获取平台卡密
                         </button>
                     </div>
+                    <!-- GitHub 同步配置 -->
+                    <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="text-xs font-bold text-slate-500 block mb-2">GitHub Token</label>
+                        <input type="password" id="github-token-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" placeholder="ghp_xxxxxxxx（用于同步验证码状态）">
+                        <p class="text-[10px] text-slate-400 mt-1">在 GitHub Settings → Developer settings → Personal access tokens 生成</p>
+                    </div>
                     <div class="bg-slate-50 p-2 rounded-lg"><code id="url-preview" class="text-[10px] text-blue-600 break-all block"></code></div>
 
                     <div class="flex gap-2 mt-4">
@@ -457,7 +463,11 @@
             platformApiUrl: "",
             platformAppId: "",
             platformAppKey: "",
-            platformAutoFetch: true
+            platformAutoFetch: true,
+            // GitHub 同步配置
+            githubToken: "",
+            githubOwner: "s26233792-lab",
+            githubRepo: "proheadshot-ai"
         };
 
         // ==================== 元素选择器 ====================
@@ -563,6 +573,10 @@
                     codes[cleanCode].usedAt = new Date().toISOString();
 
                     CodeManager.save(codes);
+
+                    // 异步同步到 GitHub（不阻塞）
+                    CodeManager.syncToGitHub().catch(e => console.error('同步到 GitHub 失败:', e));
+
                     return points;
                 }
 
@@ -626,6 +640,61 @@
                 a.click();
                 URL.revokeObjectURL(url);
                 return Object.keys(codes).length;
+            },
+
+            // 同步卡密数据到 GitHub
+            syncToGitHub: async () => {
+                if (!config.githubToken) {
+                    console.warn('未配置 GitHub Token，跳过同步');
+                    return false;
+                }
+
+                try {
+                    const codes = CodeManager.getAll();
+                    const content = JSON.stringify(codes, null, 2);
+                    const contentBase64 = btoa(unescape(encodeURIComponent(content)));
+
+                    // 首先获取当前文件的 SHA
+                    const getResponse = await fetch(`https://api.github.com/repos/${config.githubOwner}/${config.githubRepo}/contents/codes.json`, {
+                        headers: {
+                            'Authorization': `token ${config.githubToken}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+
+                    let sha = null;
+                    if (getResponse.ok) {
+                        const fileData = await getResponse.json();
+                        sha = fileData.sha;
+                    }
+
+                    // 更新或创建文件
+                    const putResponse = await fetch(`https://api.github.com/repos/${config.githubOwner}/${config.githubRepo}/contents/codes.json`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${config.githubToken}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/vnd.github.v3+json'
+                        },
+                        body: JSON.stringify({
+                            message: '更新验证码数据',
+                            content: contentBase64,
+                            sha: sha
+                        })
+                    });
+
+                    if (putResponse.ok) {
+                        console.log('验证码数据已同步到 GitHub');
+                        return true;
+                    } else {
+                        const error = await putResponse.json();
+                        console.error('同步到 GitHub 失败:', error);
+                        return false;
+                    }
+                } catch (e) {
+                    console.error('同步到 GitHub 出错:', e);
+                    return false;
+                }
             }
         };
 
@@ -974,6 +1043,7 @@
             config.baseUrl = document.getElementById('api-base-url-input').value.trim();
             config.modelId = document.getElementById('api-model-input').value.trim();
             config.autoCleanPath = els.autoCleanCheck.checked;
+            config.githubToken = document.getElementById('github-token-input').value.trim();
 
             // 保存到 localStorage
             try {
@@ -981,7 +1051,8 @@
                     userKey: config.userKey,
                     baseUrl: config.baseUrl,
                     modelId: config.modelId,
-                    autoCleanPath: config.autoCleanPath
+                    autoCleanPath: config.autoCleanPath,
+                    githubToken: config.githubToken
                 }));
             } catch (e) {}
 
