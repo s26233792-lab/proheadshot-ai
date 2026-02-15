@@ -1195,7 +1195,7 @@
                 return;
             }
 
-            const txt = activeCodes.map(k => `${k}  |  ${codes[k].points}次`).join('\n');
+            const txt = activeCodes.map(k => `${k}`).join('\n');
             const blob = new Blob([txt], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
