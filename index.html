@@ -412,6 +412,25 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- 调试工具 -->
+                    <div class="bg-orange-50 p-5 rounded-2xl border border-orange-100 mt-4">
+                        <h4 class="text-xs font-bold text-orange-700 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-bug text-orange-500"></i> 调试工具
+                        </h4>
+                        <div class="space-y-3">
+                            <div class="flex gap-2">
+                                <button onclick="debugCheckCodes()" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-xl text-xs font-bold transition">
+                                    <i class="fa-solid fa-search mr-1"></i>检查重复
+                                </button>
+                                <button onclick="debugTestCode()" class="flex-1 bg-white border border-orange-300 text-orange-600 py-2 rounded-xl text-xs font-bold hover:bg-orange-50 transition">
+                                    <i class="fa-solid fa-vial mr-1"></i>测试验证码
+                                </button>
+                            </div>
+                            <div id="debug-output" class="bg-white border border-orange-200 rounded-xl p-3 text-[10px] font-mono max-h-32 overflow-y-auto hidden">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -522,14 +541,28 @@
                 }
             },
 
-            // 生成卡密
+            // 生成卡密（带重复检查）
             generate: (points, amount) => {
                 const codes = CodeManager.getAll();
                 let generated = [];
 
                 for (let i = 0; i < amount; i++) {
-                    // 生成格式: SK-XXXX-XXXX
-                    const code = 'SK-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+                    let code;
+                    let attempts = 0;
+                    const maxAttempts = 100;
+
+                    // 生成唯一码，避免重复
+                    do {
+                        // 生成格式: SK-XXXX-XXXX
+                        code = 'SK-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+                        attempts++;
+                        if (attempts >= maxAttempts) {
+                            console.error('无法生成唯一验证码，已尝试100次');
+                            alert('生成验证码时遇到重复，请重试');
+                            return generated; // 返回已生成的部分
+                        }
+                    } while (codes[code]); // 检查是否已存在
+
                     codes[code] = {
                         points: parseInt(points),
                         status: 'active',
@@ -1217,6 +1250,84 @@
                     alert("密码错误，操作已取消");
                 }
             }
+        }
+
+        // ==================== 调试工具 ====================
+        function debugCheckCodes() {
+            const output = document.getElementById('debug-output');
+            output.classList.remove('hidden');
+
+            const codes = CodeManager.getAll();
+            const keys = Object.keys(codes);
+
+            let html = '<div class="space-y-2">';
+            html += '<div class="text-slate-600">📊 统计信息：</div>';
+            html += `<div>总卡密数：${keys.length}</div>`;
+            html += `<div>有效卡密：${Object.values(codes).filter(c => c.status === 'active').length}</div>`;
+            html += `<div>已使用：${Object.values(codes).filter(c => c.status === 'used').length}</div>`;
+
+            // 检查重复（虽然现在不会生成了，但旧数据可能有）
+            const seen = new Set();
+            const duplicates = [];
+            keys.forEach(k => {
+                const normalized = k.toUpperCase().trim();
+                if (seen.has(normalized)) {
+                    duplicates.push(k);
+                }
+                seen.add(normalized);
+            });
+
+            if (duplicates.length > 0) {
+                html += '<div class="text-red-500 mt-2">⚠️ 发现重复卡密：</div>';
+                duplicates.forEach(d => {
+                    html += `<div class="text-red-600 ml-4">${d}</div>`;
+                });
+            } else {
+                html += '<div class="text-green-600 mt-2">✅ 未发现重复卡密</div>';
+            }
+
+            html += '</div>';
+            output.innerHTML = html;
+        }
+
+        function debugTestCode() {
+            const code = prompt('请输入要测试的验证码：');
+            if (!code) return;
+
+            const output = document.getElementById('debug-output');
+            output.classList.remove('hidden');
+
+            const cleanCode = code.trim().toUpperCase();
+            const codes = CodeManager.getAll();
+
+            let html = '<div class="space-y-2">';
+
+            if (codes[cleanCode]) {
+                const codeData = codes[cleanCode];
+                html += `<div class="text-green-600">✅ 验证码存在</div>`;
+                html += `<div>卡密：${cleanCode}</div>`;
+                html += `<div>状态：${codeData.status === 'active' ? '🟢 有效' : '🔴 已使用'}</div>`;
+                html += `<div>点数：${codeData.points}</div>`;
+                html += `<div>创建时间：${codeData.createdAt || '未知'}</div>`;
+                if (codeData.usedAt) {
+                    html += `<div>使用时间：${codeData.usedAt}</div>`;
+                }
+
+                // 模拟验证
+                html += '<div class="mt-3 pt-3 border-t border-slate-200">';
+                if (codeData.status === 'active') {
+                    html += '<div class="text-blue-600">🔍 模拟验证：此验证码有效，可以正常使用</div>';
+                } else {
+                    html += '<div class="text-red-600">❌ 模拟验证：此验证码已使用，无法再次使用</div>';
+                }
+                html += '</div>';
+            } else {
+                html += `<div class="text-red-600">❌ 验证码不存在：${cleanCode}</div>`;
+                html += `<div class="text-slate-500 text-[10px] mt-2">提示：检查大小写或格式是否正确 (格式: SK-XXXX-XXXX)</div>`;
+            }
+
+            html += '</div>';
+            output.innerHTML = html;
         }
 
         // ==================== GitHub 同步 ====================
