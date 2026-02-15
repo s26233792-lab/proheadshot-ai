@@ -422,20 +422,9 @@
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center apple-card">
             <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-ticket"></i></div>
             <h3 class="font-bold text-lg mb-4">获取验证码</h3>
-            <p class="text-xs text-slate-500 mb-3">方式一：联系客服获取验证码</p>
-            <p class="text-xs text-slate-400 mb-4">方式二：输入下方自动显示的卡密</p>
-            <div class="flex gap-2 mb-4">
-                <div class="flex-1 bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
-                    <p class="text-[10px] text-slate-500 mb-1">客服微信号</p>
-                    <p class="text-xs font-bold text-blue-600">WeChat_XiaoHongShu</p>
-                </div>
-                <div class="flex-1 bg-slate-100 border border-slate-200 rounded-xl p-3 text-center">
-                    <p class="text-[10px] text-slate-500 mb-2">平台自动发货卡密</p>
-                    <p id="platform-code-display" class="text-xs font-bold text-slate-600 break-all">等待发货...</p>
-                </div>
-            </div>
+            <p class="text-xs text-slate-500 mb-4">请输入小红书客服发你的验证码，点击确认即可生成</p>
             <input type="text" id="verify-code-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center mb-4 uppercase font-mono tracking-wider" placeholder="输入卡密...">
-            <button onclick="verifyCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">获取验证码</button>
+            <button onclick="verifyCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">确认生成</button>
             <button onclick="closeModal('credit-modal')" class="text-xs text-slate-400 hover:text-slate-600">取消</button>
         </div>
     </div>
