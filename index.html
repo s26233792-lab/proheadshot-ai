@@ -437,7 +437,7 @@
             baseUrl: "https://new.12ai.org/v1",
             modelId: "gemini-2.0-flash-exp",
             autoCleanPath: true,
-            adminPwd: "admin888",
+            adminPwd: "terry_su",
             isAdmin: false,
             credits: 0,
             isGenerating: false,
@@ -456,7 +456,12 @@
             // GitHub 同步配置
             githubToken: "",
             githubOwner: "s26233792-lab",
-            githubRepo: "proheadshot-ai"
+            githubRepo: "proheadshot-ai",
+            // 安全配置
+            loginAttempts: 0,
+            maxLoginAttempts: 3,
+            lockoutUntil: 0,
+            lastFailedLogin: 0
         };
 
         // ==================== 元素选择器 ====================
@@ -991,16 +996,35 @@
         }
 
         function verifyAdminPassword() {
+            // 检查是否在锁定期
+            const now = Date.now();
+            if (now < config.lockoutUntil) {
+                const remaining = Math.ceil((config.lockoutUntil - now) / 60000);
+                alert(`登录失败次数过多，请 ${remaining} 分钟后重试`);
+                return;
+            }
+
             const pwd = document.getElementById('admin-password-input').value;
             if (pwd === config.adminPwd) {
                 config.isAdmin = true;
+                config.loginAttempts = 0; // 重置尝试次数
+                config.lockoutUntil = 0;
                 closeModal('admin-login-modal');
                 openModal('settings-modal');
                 updateUrlPreview();
                 renderCodeList();
                 switchTab('api-config');
             } else {
-                alert("密码错误");
+                config.loginAttempts++;
+                document.getElementById('admin-password-input').value = '';
+
+                if (config.loginAttempts >= config.maxLoginAttempts) {
+                    config.lockoutUntil = now + (5 * 60 * 1000); // 锁定 5 分钟
+                    alert(`密码错误次数过多，账户已锁定 5 分钟`);
+                } else {
+                    const remaining = config.maxLoginAttempts - config.loginAttempts;
+                    alert(`密码错误，还剩 ${remaining} 次尝试机会`);
+                }
             }
         }
 
@@ -1118,28 +1142,42 @@
             const keys = Object.keys(codes).reverse();
             els.codeTotalCount.textContent = keys.length;
 
+            els.codeListBody.innerHTML = ''; // 清空列表
+
             if (keys.length === 0) {
-                els.codeListBody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td></tr>';
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = '<td colspan="3" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td>';
+                els.codeListBody.appendChild(emptyRow);
                 return;
             }
 
-            let html = keys.map(k => {
+            keys.forEach(k => {
                 const c = codes[k];
                 const statusClass = c.status === 'active'
                     ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
                     : 'text-slate-400 bg-slate-50 border-slate-100';
                 const statusText = c.status === 'active' ? 'ACTIVE' : 'USED';
 
-                return `
-                    <tr class="hover:bg-slate-50 cursor-pointer transition-colors" onclick="navigator.clipboard.writeText('${k}');showStatus('已复制: ${k}', 'success')">
-                        <td class="p-3 font-mono text-slate-600 tracking-wide text-[11px]">${k}</td>
-                        <td class="p-3 font-bold"><span class="bg-blue-50 px-2 py-0.5 rounded text-blue-700 text-[11px]">${c.points} 次</span></td>
-                        <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${statusText}</span></td>
-                    </tr>
-                `;
-            }).join('');
+                // 使用 DOM 方法而不是 innerHTML，避免 XSS
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50 cursor-pointer transition-colors';
 
-            els.codeListBody.innerHTML = html;
+                // 转义卡密内容以防止 XSS
+                const escapedK = k.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                row.innerHTML = `
+                    <td class="p-3 font-mono text-slate-600 tracking-wide text-[11px]">${escapedK}</td>
+                    <td class="p-3 font-bold"><span class="bg-blue-50 px-2 py-0.5 rounded text-blue-700 text-[11px]">${c.points} 次</span></td>
+                    <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${statusText}</span></td>
+                `;
+
+                row.addEventListener('click', () => {
+                    navigator.clipboard.writeText(k);
+                    showStatus('已复制: ' + k, 'success');
+                });
+
+                els.codeListBody.appendChild(row);
+            });
         }
 
         function exportCodes() {
@@ -1169,10 +1207,15 @@
         }
 
         function clearAllCodes() {
-            if (confirm("警告：确定清空所有未使用的卡密吗？此操作不可恢复！")) {
-                CodeManager.clearAll();
-                renderCodeList();
-                showStatus("卡密库已清空", "success");
+            if (confirm("警告：确定清空所有未使用的卡密吗？此操作不可恢��！")) {
+                const pwd = prompt("请输入管理员密码确认此操作：");
+                if (pwd === config.adminPwd) {
+                    CodeManager.clearAll();
+                    renderCodeList();
+                    showStatus("卡密库已清空", "success");
+                } else {
+                    alert("密码错误，操作已取消");
+                }
             }
         }
 
