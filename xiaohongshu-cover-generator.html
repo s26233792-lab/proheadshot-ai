@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书封面生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #ff2442;
+            --secondary-color: #ff6b81;
+            --bg-color: #f5f5f5;
+            --panel-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --text-color: #333333;
+            --text-secondary: #666666;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: var(--text-color);
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-success {
+            background: #52c41a;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #3da616;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        /* Left Panel - Tools */
+        .left-panel {
+            width: 280px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            padding: 16px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .panel-header:hover {
+            background: #f0f0f0;
+        }
+
+        .panel-content {
+            padding: 16px;
+        }
+
+        .panel-content.collapsed {
+            display: none;
+        }
+
+        /* Mode Tabs */
+        .mode-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .mode-tab:hover {
+            background: #f0f0f0;
+        }
+
+        .mode-tab.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: #e8e8e8;
+            position: relative;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: var(--shadow);
+            background: white;
+        }
+
+        #canvas {
+            display: block;
+            max-height: calc(100vh - 150px);
+            max-width: 100%;
+        }
+
+        .canvas-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+
+        /* Right Panel - Properties */
+        .right-panel {
+            width: 300px;
+            background: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        input[type="color"] {
+            height: 40px;
+            padding: 2px;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(255, 36, 66, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(255, 36, 66, 0.1);
+        }
+
+        /* Layer List */
+        .layer-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .layer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            background: white;
+        }
+
+        .layer-item:hover {
+            background: #f0f0f0;
+        }
+
+        .layer-item.active {
+            border-color: var(--primary-color);
+            background: rgba(255, 36, 66, 0.05);
+        }
+
+        .layer-item .layer-name {
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .layer-item .layer-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .layer-item .layer-actions button {
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .layer-item .layer-actions button:hover {
+            background: #f0f0f0;
+        }
+
+        /* Collage Grid */
+        .collage-grid {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .collage-cell {
+            aspect-ratio: 1;
+            border: 2px dashed var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: #fafafa;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .collage-cell:hover {
+            border-color: var(--primary-color);
+        }
+
+        .collage-cell img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .collage-cell .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .collage-cell:hover .remove-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Text Element */
+        .text-element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            padding: 4px 8px;
+            border: 1px dashed transparent;
+        }
+
+        .text-element:hover {
+            border-color: var(--primary-color);
+        }
+
+        .text-element.selected {
+            border-color: var(--primary-color);
+        }
+
+        /* Image Element */
+        .image-element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            border: 1px dashed transparent;
+        }
+
+        .image-element:hover {
+            border-color: var(--primary-color);
+        }
+
+        .image-element.selected {
+            border-color: var(--primary-color);
+        }
+
+        .image-element img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Resize Handles */
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+        }
+
+        .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+
+        /* Size Options */
+        .size-options {
+            display: flex;
+            gap: 8px;
+        }
+
+        .size-option {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .size-option.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Font Upload */
+        .font-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .font-item {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .font-item:hover {
+            background: #f0f0f0;
+        }
+
+        .font-item.active {
+            border-color: var(--primary-color);
+            background: rgba(255, 36, 66, 0.05);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .left-panel { width: 240px; }
+            .right-panel { width: 260px; }
+        }
+
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .left-panel, .right-panel { width: 100%; height: auto; }
+            .canvas-area { min-height: 400px; }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .modal-body {
+            margin-bottom: 16px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f0f0f0;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+            </svg>
+            小红书封面生成器
+        </h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" id="undoBtn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                </svg>
+                撤销
+            </button>
+            <button class="btn btn-secondary" id="redoBtn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.4 10.6C16.55 9 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/>
+                </svg>
+                重做
+            </button>
+            <button class="btn btn-secondary" id="saveBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                </svg>
+                保存草稿
+            </button>
+            <button class="btn btn-secondary" id="loadBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                </svg>
+                加载草稿
+            </button>
+            <button class="btn btn-primary" id="exportBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
+                </svg>
+                导出图片
+            </button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <!-- Mode Selection -->
+            <div class="mode-tabs">
+                <div class="mode-tab active" data-mode="image">图片+文字</div>
+                <div class="mode-tab" data-mode="text">纯文字</div>
+                <div class="mode-tab" data-mode="collage">拼图</div>
+            </div>
+
+            <!-- Background Section -->
+            <div class="panel-section">
+                <div class="panel-header" data-toggle="background">
+                    <span>🎨 背景设置</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content" id="backgroundPanel">
+                    <div class="form-group">
+                        <label>背景类型</label>
+                        <select class="form-control" id="bgType">
+                            <option value="solid">纯色</option>
+                            <option value="gradient">渐变</option>
+                            <option value="image">图片</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="solidBgGroup">
+                        <label>背景颜色</label>
+                        <input type="color" class="form-control" id="bgColor" value="#ffffff">
+                    </div>
+                    <div class="form-group" id="gradientBgGroup" style="display:none;">
+                        <label>渐变起始色</label>
+                        <input type="color" class="form-control" id="gradientStart" value="#ff2442">
+                        <label style="margin-top:8px;">渐变结束色</label>
+                        <input type="color" class="form-control" id="gradientEnd" value="#ff6b81">
+                    </div>
+                    <div class="form-group" id="imageBgGroup" style="display:none;">
+                        <label>背景图片</label>
+                        <div class="upload-area" id="bgImageUpload">
+                            <div>点击或拖拽上传</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Image Section -->
+            <div class="panel-section" id="imageSection">
+                <div class="panel-header" data-toggle="image">
+                    <span>🖼️ 图片设置</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content">
+                    <div class="upload-area" id="imageUpload">
+                        <div>点击或拖拽上传图片</div>
+                    </div>
+                    <div class="form-group" style="margin-top:16px;">
+                        <label>图片圆角</label>
+                        <input type="range" id="imageRadius" min="0" max="50" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>图片透明度</label>
+                        <input type="range" id="imageOpacity" min="0" max="100" value="100">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text Section -->
+            <div class="panel-section">
+                <div class="panel-header" data-toggle="text">
+                    <span>✍️ 添加文字</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="textInput" placeholder="输入文字内容">
+                    </div>
+                    <button class="btn btn-primary" id="addTextBtn" style="width:100%">添加文字</button>
+                </div>
+            </div>
+
+            <!-- Decorations Section -->
+            <div class="panel-section">
+                <div class="panel-header" data-toggle="decorations">
+                    <span>✨ 装饰元素</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content">
+                    <button class="btn btn-secondary" id="addRectBtn" style="width:100%;margin-bottom:8px;">添加矩形</button>
+                    <button class="btn btn-secondary" id="addCircleBtn" style="width:100%;margin-bottom:8px;">添加圆形</button>
+                    <button class="btn btn-secondary" id="addLineBtn" style="width:100%;">添加线条</button>
+                </div>
+            </div>
+
+            <!-- Font Section -->
+            <div class="panel-section">
+                <div class="panel-header" data-toggle="fonts">
+                    <span>🔤 字体管理</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>上传自定义字体</label>
+                        <input type="file" id="fontUpload" accept=".ttf,.otf,.woff,.woff2" style="display:none">
+                        <div class="upload-area" id="fontUploadArea">
+                            <div>点击上传字体文件</div>
+                        </div>
+                    </div>
+                    <div class="font-list" id="fontList">
+                        <div class="font-item active" data-font="system">系统默认</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-area">
+            <div class="canvas-toolbar">
+                <div class="size-options">
+                    <div class="size-option active" data-size="3:4">3:4 (竖版)</div>
+                    <div class="size-option" data-size="1:1">1:1 (方形)</div>
+                </div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="canvas" width="621" height="830"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Panel - Properties -->
+        <div class="right-panel">
+            <!-- Element Properties -->
+            <div class="panel-section">
+                <div class="panel-header" data-toggle="properties">
+                    <span>⚙️ 元素属性</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content" id="propertiesPanel">
+                    <div id="noSelectionMsg" style="color:var(--text-secondary);text-align:center;padding:20px;">
+                        选择一个元素进行编辑
+                    </div>
+                    <div id="elementProperties" style="display:none;">
+                        <div class="form-group">
+                            <label>X坐标</label>
+                            <input type="number" class="form-control" id="elemX">
+                        </div>
+                        <div class="form-group">
+                            <label>Y坐标</label>
+                            <input type="number" class="form-control" id="elemY">
+                        </div>
+                        <div class="form-group">
+                            <label>宽度</label>
+                            <input type="number" class="form-control" id="elemWidth">
+                        </div>
+                        <div class="form-group">
+                            <label>高度</label>
+                            <input type="number" class="form-control" id="elemHeight">
+                        </div>
+                        <div class="form-group" id="textProps" style="display:none;">
+                            <label>文字内容</label>
+                            <input type="text" class="form-control" id="elemText">
+                            <label style="margin-top:8px;">字体大小</label>
+                            <input type="number" class="form-control" id="elemFontSize">
+                            <label style="margin-top:8px;">文字颜色</label>
+                            <input type="color" class="form-control" id="elemColor">
+                            <label style="margin-top:8px;">粗体</label>
+                            <input type="checkbox" id="elemBold">
+                        </div>
+                        <div class="form-group" id="shapeProps" style="display:none;">
+                            <label>填充颜色</label>
+                            <input type="color" class="form-control" id="elemFill">
+                            <label style="margin-top:8px;">边框颜色</label>
+                            <input type="color" class="form-control" id="elemStroke">
+                            <label style="margin-top:8px;">边框宽度</label>
+                            <input type="range" id="elemStrokeWidth" min="0" max="20" value="2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Layer Management -->
+            <div class="panel-section">
+                <div class="panel-header" data-toggle="layers">
+                    <span>📚 图层管理</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content">
+                    <div class="layer-list" id="layerList">
+                        <div style="color:var(--text-secondary);text-align:center;padding:20px;font-size:13px;">
+                            暂无图层
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collage Settings (shown only in collage mode) -->
+            <div class="panel-section" id="collageSection" style="display:none;">
+                <div class="panel-header" data-toggle="collage">
+                    <span>🎞️ 拼图设置</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>拼图布局</label>
+                        <select class="form-control" id="collageLayout">
+                            <option value="grid2">2张 (网格)</option>
+                            <option value="grid4">4张 (网格)</option>
+                            <option value="grid9">9张 (网格)</option>
+                            <option value="horizontal">2张 (横排)</option>
+                            <option value="vertical">2张 (竖排)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>图片间距</label>
+                        <input type="range" id="collageGap" min="0" max="50" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label>圆角</label>
+                        <input type="range" id="collageRadius" min="0" max="50" value="0">
+                    </div>
+                    <div class="collage-grid" id="collageGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="imageFileInput" accept="image/*" multiple style="display:none">
+    <input type="file" id="bgImageFileInput" accept="image/*" style="display:none">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // ========== Global State ==========
+        const state = {
+            mode: 'image', // 'image', 'text', 'collage'
+            canvasSize: '3:4', // '3:4' or '1:1'
+            canvas: null,
+            ctx: null,
+            elements: [],
+            selectedElement: null,
+            background: {
+                type: 'solid',
+                color: '#ffffff',
+                gradientStart: '#ff2442',
+                gradientEnd: '#ff6b81',
+                image: null
+            },
+            collage: {
+                layout: 'grid2',
+                gap: 10,
+                radius: 0,
+                images: []
+            },
+            customFonts: [],
+            history: [],
+            historyIndex: -1,
+            isDragging: false,
+            isResizing: false,
+            dragOffset: { x: 0, y: 0 },
+            resizeHandle: null
+        };
+
+        // ========== Canvas Dimensions ==========
+        const CANVAS_SIZES = {
+            '3:4': { width: 621, height: 830 },
+            '1:1': { width: 621, height: 621 }
+        };
+
+        // ========== Initialization ==========
+        function init() {
+            state.canvas = document.getElementById('canvas');
+            state.ctx = state.canvas.getContext('2d');
+
+            setupEventListeners();
+            initCollageGrid();
+            saveToHistory();
+            render();
+        }
+
+        // ========== Event Listeners ==========
+        function setupEventListeners() {
+            // Mode tabs
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.addEventListener('click', () => switchMode(tab.dataset.mode));
+            });
+
+            // Canvas size
+            document.querySelectorAll('.size-option').forEach(option => {
+                option.addEventListener('click', () => switchCanvasSize(option.dataset.size));
+            });
+
+            // Panel toggles
+            document.querySelectorAll('.panel-header').forEach(header => {
+                header.addEventListener('click', () => togglePanel(header));
+            });
+
+            // Background settings
+            document.getElementById('bgType').addEventListener('change', (e) => {
+                state.background.type = e.target.value;
+                updateBackgroundUI();
+                render();
+            });
+
+            document.getElementById('bgColor').addEventListener('input', (e) => {
+                state.background.color = e.target.value;
+                render();
+            });
+
+            document.getElementById('gradientStart').addEventListener('input', (e) => {
+                state.background.gradientStart = e.target.value;
+                render();
+            });
+
+            document.getElementById('gradientEnd').addEventListener('input', (e) => {
+                state.background.gradientEnd = e.target.value;
+                render();
+            });
+
+            // Image upload
+            document.getElementById('imageUpload').addEventListener('click', () => {
+                document.getElementById('imageFileInput').click();
+            });
+
+            document.getElementById('imageFileInput').addEventListener('change', handleImageUpload);
+
+            document.getElementById('imageUpload').addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('dragover');
+            });
+
+            document.getElementById('imageUpload').addEventListener('dragleave', (e) => {
+                e.currentTarget.classList.remove('dragover');
+            });
+
+            document.getElementById('imageUpload').addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+                handleImageDrop(e.dataTransfer.files);
+            });
+
+            // Background image upload
+            document.getElementById('bgImageUpload').addEventListener('click', () => {
+                document.getElementById('bgImageFileInput').click();
+            });
+
+            document.getElementById('bgImageFileInput').addEventListener('change', handleBgImageUpload);
+
+            // Text addition
+            document.getElementById('addTextBtn').addEventListener('click', addText);
+
+            // Decorations
+            document.getElementById('addRectBtn').addEventListener('click', () => addShape('rect'));
+            document.getElementById('addCircleBtn').addEventListener('click', () => addShape('circle'));
+            document.getElementById('addLineBtn').addEventListener('click', () => addShape('line'));
+
+            // Font upload
+            document.getElementById('fontUploadArea').addEventListener('click', () => {
+                document.getElementById('fontUpload').click();
+            });
+
+            document.getElementById('fontUpload').addEventListener('change', handleFontUpload);
+
+            // Canvas interactions
+            state.canvas.addEventListener('mousedown', handleCanvasMouseDown);
+            state.canvas.addEventListener('mousemove', handleCanvasMouseMove);
+            state.canvas.addEventListener('mouseup', handleCanvasMouseUp);
+            state.canvas.addEventListener('mouseleave', handleCanvasMouseUp);
+
+            // Element properties
+            document.getElementById('elemX').addEventListener('input', updateElementProperty);
+            document.getElementById('elemY').addEventListener('input', updateElementProperty);
+            document.getElementById('elemWidth').addEventListener('input', updateElementProperty);
+            document.getElementById('elemHeight').addEventListener('input', updateElementProperty);
+            document.getElementById('elemText').addEventListener('input', updateElementProperty);
+            document.getElementById('elemFontSize').addEventListener('input', updateElementProperty);
+            document.getElementById('elemColor').addEventListener('input', updateElementProperty);
+            document.getElementById('elemBold').addEventListener('change', updateElementProperty);
+            document.getElementById('elemFill').addEventListener('input', updateElementProperty);
+            document.getElementById('elemStroke').addEventListener('input', updateElementProperty);
+            document.getElementById('elemStrokeWidth').addEventListener('input', updateElementProperty);
+
+            // Image properties
+            document.getElementById('imageRadius').addEventListener('input', (e) => {
+                if (state.selectedElement && state.selectedElement.type === 'image') {
+                    state.selectedElement.radius = parseInt(e.target.value);
+                    render();
+                }
+            });
+
+            document.getElementById('imageOpacity').addEventListener('input', (e) => {
+                if (state.selectedElement && state.selectedElement.type === 'image') {
+                    state.selectedElement.opacity = parseInt(e.target.value) / 100;
+                    render();
+                }
+            });
+
+            // Collage settings
+            document.getElementById('collageLayout').addEventListener('change', (e) => {
+                state.collage.layout = e.target.value;
+                initCollageGrid();
+                render();
+            });
+
+            document.getElementById('collageGap').addEventListener('input', (e) => {
+                state.collage.gap = parseInt(e.target.value);
+                render();
+            });
+
+            document.getElementById('collageRadius').addEventListener('input', (e) => {
+                state.collage.radius = parseInt(e.target.value);
+                render();
+            });
+
+            // Header actions
+            document.getElementById('undoBtn').addEventListener('click', undo);
+            document.getElementById('redoBtn').addEventListener('click', redo);
+            document.getElementById('saveBtn').addEventListener('click', saveDraft);
+            document.getElementById('loadBtn').addEventListener('click', loadDraft);
+            document.getElementById('exportBtn').addEventListener('click', exportImage);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (state.selectedElement && document.activeElement.tagName !== 'INPUT') {
+                        deleteSelectedElement();
+                    }
+                }
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key === 'z') {
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            redo();
+                        } else {
+                            undo();
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========== Mode Switching ==========
+        function switchMode(mode) {
+            state.mode = mode;
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.mode === mode);
+            });
+
+            // Show/hide sections based on mode
+            const imageSection = document.getElementById('imageSection');
+            const collageSection = document.getElementById('collageSection');
+
+            imageSection.style.display = mode === 'collage' ? 'none' : 'block';
+            collageSection.style.display = mode === 'collage' ? 'block' : 'none';
+
+            render();
+        }
+
+        // ========== Canvas Size ==========
+        function switchCanvasSize(size) {
+            state.canvasSize = size;
+            const dimensions = CANVAS_SIZES[size];
+            state.canvas.width = dimensions.width;
+            state.canvas.height = dimensions.height;
+
+            document.querySelectorAll('.size-option').forEach(option => {
+                option.classList.toggle('active', option.dataset.size === size);
+            });
+
+            render();
+        }
+
+        // ========== Panel Toggle ==========
+        function togglePanel(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            content.classList.toggle('collapsed');
+            icon.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+        }
+
+        // ========== Background UI ==========
+        function updateBackgroundUI() {
+            const type = state.background.type;
+            document.getElementById('solidBgGroup').style.display = type === 'solid' ? 'block' : 'none';
+            document.getElementById('gradientBgGroup').style.display = type === 'gradient' ? 'block' : 'none';
+            document.getElementById('imageBgGroup').style.display = type === 'image' ? 'block' : 'none';
+        }
+
+        // ========== Image Handling ==========
+        function handleImageUpload(e) {
+            handleImageDrop(e.target.files);
+        }
+
+        function handleImageDrop(files) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const element = {
+                                id: Date.now() + Math.random(),
+                                type: 'image',
+                                image: img,
+                                x: 50,
+                                y: 50,
+                                width: Math.min(img.width, 300),
+                                height: Math.min(img.height, 300),
+                                radius: 0,
+                                opacity: 1
+                            };
+                            state.elements.push(element);
+                            saveToHistory();
+                            render();
+                            updateLayerList();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function handleBgImageUpload(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        state.background.image = img;
+                        render();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // ========== Text Handling ==========
+        function addText() {
+            const text = document.getElementById('textInput').value.trim();
+            if (text) {
+                const element = {
+                    id: Date.now(),
+                    type: 'text',
+                    text: text,
+                    x: 100,
+                    y: 100,
+                    fontSize: 32,
+                    fontFamily: 'system',
+                    color: '#333333',
+                    bold: false
+                };
+                state.elements.push(element);
+                document.getElementById('textInput').value = '';
+                saveToHistory();
+                render();
+                updateLayerList();
+            }
+        }
+
+        // ========== Shape Handling ==========
+        function addShape(type) {
+            const element = {
+                id: Date.now(),
+                type: type,
+                x: 150,
+                y: 150,
+                width: 100,
+                height: type === 'line' ? 2 : 100,
+                fill: '#ff2442',
+                stroke: '#333333',
+                strokeWidth: 2
+            };
+            state.elements.push(element);
+            saveToHistory();
+            render();
+            updateLayerList();
+        }
+
+        // ========== Font Handling ==========
+        function handleFontUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const fontName = 'custom_' + Date.now();
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fontFace = new FontFace(fontName, e.target.result);
+                    fontFace.load().then((loadedFace) => {
+                        document.fonts.add(loadedFace);
+                        state.customFonts.push({
+                            name: file.name,
+                            family: fontName
+                        });
+                        updateFontList();
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function updateFontList() {
+            const fontList = document.getElementById('fontList');
+            fontList.innerHTML = '<div class="font-item" data-font="system">系统默认</div>';
+
+            state.customFonts.forEach(font => {
+                const item = document.createElement('div');
+                item.className = 'font-item';
+                item.dataset.font = font.family;
+                item.textContent = font.name;
+                fontList.appendChild(item);
+            });
+
+            // Add click handlers
+            fontList.querySelectorAll('.font-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    fontList.querySelectorAll('.font-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    if (state.selectedElement && state.selectedElement.type === 'text') {
+                        state.selectedElement.fontFamily = item.dataset.font;
+                        render();
+                    }
+                });
+            });
+        }
+
+        // ========== Canvas Interactions ==========
+        function handleCanvasMouseDown(e) {
+            const rect = state.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Check if clicking on resize handle
+            if (state.selectedElement) {
+                const handle = getResizeHandle(x, y, state.selectedElement);
+                if (handle) {
+                    state.isResizing = true;
+                    state.resizeHandle = handle;
+                    return;
+                }
+            }
+
+            // Check if clicking on element
+            let found = null;
+            for (let i = state.elements.length - 1; i >= 0; i--) {
+                const elem = state.elements[i];
+                if (isPointInElement(x, y, elem)) {
+                    found = elem;
+                    break;
+                }
+            }
+
+            if (found) {
+                selectElement(found);
+                state.isDragging = true;
+                state.dragOffset = {
+                    x: x - found.x,
+                    y: y - found.y
+                };
+            } else {
+                selectElement(null);
+            }
+        }
+
+        function handleCanvasMouseMove(e) {
+            const rect = state.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (state.isDragging && state.selectedElement) {
+                state.selectedElement.x = x - state.dragOffset.x;
+                state.selectedElement.y = y - state.dragOffset.y;
+                render();
+                updatePropertyPanel();
+            } else if (state.isResizing && state.selectedElement) {
+                resizeElement(x, y);
+                render();
+                updatePropertyPanel();
+            }
+
+            // Update cursor
+            let cursor = 'default';
+            if (state.selectedElement) {
+                const handle = getResizeHandle(x, y, state.selectedElement);
+                if (handle) {
+                    cursor = handle + '-resize';
+                } else if (isPointInElement(x, y, state.selectedElement)) {
+                    cursor = 'move';
+                }
+            }
+            state.canvas.style.cursor = cursor;
+        }
+
+        function handleCanvasMouseUp() {
+            if (state.isDragging || state.isResizing) {
+                saveToHistory();
+            }
+            state.isDragging = false;
+            state.isResizing = false;
+            state.resizeHandle = null;
+        }
+
+        function isPointInElement(x, y, elem) {
+            if (elem.type === 'text') {
+                state.ctx.font = `${elem.bold ? 'bold' : ''} ${elem.fontSize}px ${elem.fontFamily === 'system' ? 'Arial' : elem.fontFamily}`;
+                const metrics = state.ctx.measureText(elem.text);
+                return x >= elem.x && x <= elem.x + metrics.width &&
+                       y >= elem.y - elem.fontSize && y <= elem.y;
+            } else {
+                return x >= elem.x && x <= elem.x + elem.width &&
+                       y >= elem.y && y <= elem.y + elem.height;
+            }
+        }
+
+        function getResizeHandle(x, y, elem) {
+            const handleSize = 10;
+            const corners = {
+                'nw': { x: elem.x, y: elem.y },
+                'ne': { x: elem.x + elem.width, y: elem.y },
+                'sw': { x: elem.x, y: elem.y + elem.height },
+                'se': { x: elem.x + elem.width, y: elem.y + elem.height }
+            };
+
+            for (const [name, pos] of Object.entries(corners)) {
+                if (Math.abs(x - pos.x) < handleSize && Math.abs(y - pos.y) < handleSize) {
+                    return name;
+                }
+            }
+            return null;
+        }
+
+        function resizeElement(x, y) {
+            const elem = state.selectedElement;
+            const handle = state.resizeHandle;
+
+            if (handle.includes('e')) {
+                elem.width = Math.max(20, x - elem.x);
+            }
+            if (handle.includes('w')) {
+                const newWidth = elem.x + elem.width - x;
+                if (newWidth > 20) {
+                    elem.x = x;
+                    elem.width = newWidth;
+                }
+            }
+            if (handle.includes('s')) {
+                elem.height = Math.max(20, y - elem.y);
+            }
+            if (handle.includes('n')) {
+                const newHeight = elem.y + elem.height - y;
+                if (newHeight > 20) {
+                    elem.y = y;
+                    elem.height = newHeight;
+                }
+            }
+        }
+
+        // ========== Element Selection ==========
+        function selectElement(element) {
+            state.selectedElement = element;
+            updatePropertyPanel();
+            updateLayerList();
+            render();
+        }
+
+        function deleteSelectedElement() {
+            if (state.selectedElement) {
+                state.elements = state.elements.filter(e => e.id !== state.selectedElement.id);
+                state.selectedElement = null;
+                saveToHistory();
+                render();
+                updatePropertyPanel();
+                updateLayerList();
+            }
+        }
+
+        // ========== Property Panel ==========
+        function updatePropertyPanel() {
+            const noSelection = document.getElementById('noSelectionMsg');
+            const properties = document.getElementById('elementProperties');
+
+            if (state.selectedElement) {
+                noSelection.style.display = 'none';
+                properties.style.display = 'block';
+
+                document.getElementById('elemX').value = Math.round(state.selectedElement.x);
+                document.getElementById('elemY').value = Math.round(state.selectedElement.y);
+                document.getElementById('elemWidth').value = Math.round(state.selectedElement.width || 0);
+                document.getElementById('elemHeight').value = Math.round(state.selectedElement.height || 0);
+
+                const textProps = document.getElementById('textProps');
+                const shapeProps = document.getElementById('shapeProps');
+
+                if (state.selectedElement.type === 'text') {
+                    textProps.style.display = 'block';
+                    shapeProps.style.display = 'none';
+                    document.getElementById('elemText').value = state.selectedElement.text;
+                    document.getElementById('elemFontSize').value = state.selectedElement.fontSize;
+                    document.getElementById('elemColor').value = state.selectedElement.color;
+                    document.getElementById('elemBold').checked = state.selectedElement.bold;
+                } else {
+                    textProps.style.display = 'none';
+                    shapeProps.style.display = 'block';
+                    document.getElementById('elemFill').value = state.selectedElement.fill || '#ff2442';
+                    document.getElementById('elemStroke').value = state.selectedElement.stroke || '#333333';
+                    document.getElementById('elemStrokeWidth').value = state.selectedElement.strokeWidth || 2;
+                }
+            } else {
+                noSelection.style.display = 'block';
+                properties.style.display = 'none';
+            }
+        }
+
+        function updateElementProperty() {
+            if (!state.selectedElement) return;
+
+            state.selectedElement.x = parseFloat(document.getElementById('elemX').value);
+            state.selectedElement.y = parseFloat(document.getElementById('elemY').value);
+            state.selectedElement.width = parseFloat(document.getElementById('elemWidth').value);
+            state.selectedElement.height = parseFloat(document.getElementById('elemHeight').value);
+
+            if (state.selectedElement.type === 'text') {
+                state.selectedElement.text = document.getElementById('elemText').value;
+                state.selectedElement.fontSize = parseInt(document.getElementById('elemFontSize').value);
+                state.selectedElement.color = document.getElementById('elemColor').value;
+                state.selectedElement.bold = document.getElementById('elemBold').checked;
+            } else {
+                state.selectedElement.fill = document.getElementById('elemFill').value;
+                state.selectedElement.stroke = document.getElementById('elemStroke').value;
+                state.selectedElement.strokeWidth = parseInt(document.getElementById('elemStrokeWidth').value);
+            }
+
+            render();
+        }
+
+        // ========== Layer Management ==========
+        function updateLayerList() {
+            const layerList = document.getElementById('layerList');
+
+            if (state.elements.length === 0) {
+                layerList.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:20px;font-size:13px;">暂无图层</div>';
+                return;
+            }
+
+            layerList.innerHTML = '';
+            [...state.elements].reverse().forEach(elem => {
+                const item = document.createElement('div');
+                item.className = 'layer-item';
+                if (elem === state.selectedElement) {
+                    item.classList.add('active');
+                }
+
+                let name = '';
+                switch (elem.type) {
+                    case 'text': name = '📝 ' + elem.text.substring(0, 10); break;
+                    case 'image': name = '🖼️ 图片'; break;
+                    case 'rect': name = '⬜ 矩形'; break;
+                    case 'circle': name = '⭕ 圆形'; break;
+                    case 'line': name = '➖ 线条'; break;
+                }
+
+                item.innerHTML = `
+                    <span class="layer-name">${name}</span>
+                    <div class="layer-actions">
+                        <button onclick="moveElementUp(${elem.id})">↑</button>
+                        <button onclick="moveElementDown(${elem.id})">↓</button>
+                        <button onclick="deleteElementById(${elem.id})">×</button>
+                    </div>
+                `;
+
+                item.addEventListener('click', (e) => {
+                    if (!e.target.tagName === 'BUTTON') {
+                        selectElement(elem);
+                    }
+                });
+
+                layerList.appendChild(item);
+            });
+        }
+
+        function moveElementUp(id) {
+            const index = state.elements.findIndex(e => e.id === id);
+            if (index < state.elements.length - 1) {
+                [state.elements[index], state.elements[index + 1]] = [state.elements[index + 1], state.elements[index]];
+                saveToHistory();
+                render();
+                updateLayerList();
+            }
+        }
+
+        function moveElementDown(id) {
+            const index = state.elements.findIndex(e => e.id === id);
+            if (index > 0) {
+                [state.elements[index], state.elements[index - 1]] = [state.elements[index - 1], state.elements[index]];
+                saveToHistory();
+                render();
+                updateLayerList();
+            }
+        }
+
+        function deleteElementById(id) {
+            state.elements = state.elements.filter(e => e.id !== id);
+            if (state.selectedElement && state.selectedElement.id === id) {
+                state.selectedElement = null;
+            }
+            saveToHistory();
+            render();
+            updatePropertyPanel();
+            updateLayerList();
+        }
+
+        // ========== Collage ==========
+        function initCollageGrid() {
+            const grid = document.getElementById('collageGrid');
+            const layout = state.collage.layout;
+
+            let cols, rows;
+            switch (layout) {
+                case 'grid2': cols = 1; rows = 2; break;
+                case 'grid4': cols = 2; rows = 2; break;
+                case 'grid9': cols = 3; rows = 3; break;
+                case 'horizontal': cols = 2; rows = 1; break;
+                case 'vertical': cols = 1; rows = 2; break;
+            }
+
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            grid.innerHTML = '';
+
+            for (let i = 0; i < cols * rows; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'collage-cell';
+                cell.innerHTML = '<span style="color:#999;font-size:24px;">+</span>';
+
+                if (state.collage.images[i]) {
+                    cell.innerHTML = `
+                        <img src="${state.collage.images[i].src}" alt="">
+                        <button class="remove-btn" onclick="removeCollageImage(${i})">×</button>
+                    `;
+                }
+
+                cell.addEventListener('click', () => addCollageImage(i));
+                grid.appendChild(cell);
+            }
+        }
+
+        function addCollageImage(index) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            state.collage.images[index] = img;
+                            initCollageGrid();
+                            render();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        }
+
+        function removeCollageImage(index) {
+            delete state.collage.images[index];
+            initCollageGrid();
+            render();
+        }
+
+        // ========== Rendering ==========
+        function render() {
+            const ctx = state.ctx;
+            const canvas = state.canvas;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background
+            drawBackground(ctx, canvas);
+
+            // Draw based on mode
+            if (state.mode === 'collage') {
+                drawCollage(ctx, canvas);
+            } else {
+                // Draw elements
+                state.elements.forEach(elem => {
+                    drawElement(ctx, elem);
+                });
+            }
+
+            // Draw selection
+            if (state.selectedElement) {
+                drawSelection(ctx, state.selectedElement);
+            }
+        }
+
+        function drawBackground(ctx, canvas) {
+            switch (state.background.type) {
+                case 'solid':
+                    ctx.fillStyle = state.background.color;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    break;
+                case 'gradient':
+                    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                    gradient.addColorStop(0, state.background.gradientStart);
+                    gradient.addColorStop(1, state.background.gradientEnd);
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    break;
+                case 'image':
+                    if (state.background.image) {
+                        ctx.drawImage(state.background.image, 0, 0, canvas.width, canvas.height);
+                    } else {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    }
+                    break;
+            }
+        }
+
+        function drawElement(ctx, elem) {
+            ctx.save();
+
+            if (elem.type === 'image') {
+                ctx.globalAlpha = elem.opacity || 1;
+                if (elem.radius) {
+                    roundRect(ctx, elem.x, elem.y, elem.width, elem.height, elem.radius);
+                    ctx.clip();
+                }
+                ctx.drawImage(elem.image, elem.x, elem.y, elem.width, elem.height);
+                if (elem.radius) {
+                    ctx.strokeStyle = '#ddd';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            } else if (elem.type === 'text') {
+                const fontFamily = elem.fontFamily === 'system' ? 'Arial' : elem.fontFamily;
+                ctx.font = `${elem.bold ? 'bold' : ''} ${elem.fontSize}px ${fontFamily}`;
+                ctx.fillStyle = elem.color;
+                ctx.fillText(elem.text, elem.x, elem.y);
+            } else if (elem.type === 'rect') {
+                ctx.fillStyle = elem.fill;
+                ctx.strokeStyle = elem.stroke;
+                ctx.lineWidth = elem.strokeWidth;
+                ctx.fillRect(elem.x, elem.y, elem.width, elem.height);
+                if (elem.strokeWidth > 0) {
+                    ctx.strokeRect(elem.x, elem.y, elem.width, elem.height);
+                }
+            } else if (elem.type === 'circle') {
+                ctx.fillStyle = elem.fill;
+                ctx.strokeStyle = elem.stroke;
+                ctx.lineWidth = elem.strokeWidth;
+                ctx.beginPath();
+                ctx.ellipse(
+                    elem.x + elem.width / 2,
+                    elem.y + elem.height / 2,
+                    elem.width / 2,
+                    elem.height / 2,
+                    0, 0, Math.PI * 2
+                );
+                ctx.fill();
+                if (elem.strokeWidth > 0) {
+                    ctx.stroke();
+                }
+            } else if (elem.type === 'line') {
+                ctx.strokeStyle = elem.fill;
+                ctx.lineWidth = elem.height;
+                ctx.beginPath();
+                ctx.moveTo(elem.x, elem.y);
+                ctx.lineTo(elem.x + elem.width, elem.y);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function drawCollage(ctx, canvas) {
+            const layout = state.collage.layout;
+            const gap = state.collage.gap;
+            const radius = state.collage.radius;
+
+            let cols, rows;
+            switch (layout) {
+                case 'grid2': cols = 1; rows = 2; break;
+                case 'grid4': cols = 2; rows = 2; break;
+                case 'grid9': cols = 3; rows = 3; break;
+                case 'horizontal': cols = 2; rows = 1; break;
+                case 'vertical': cols = 1; rows = 2; break;
+            }
+
+            const cellWidth = (canvas.width - gap * (cols + 1)) / cols;
+            const cellHeight = (canvas.height - gap * (rows + 1)) / rows;
+
+            for (let i = 0; i < cols * rows; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = gap + col * (cellWidth + gap);
+                const y = gap + row * (cellHeight + gap);
+
+                // Draw cell background
+                ctx.fillStyle = '#f0f0f0';
+                if (radius) {
+                    roundRect(ctx, x, y, cellWidth, cellHeight, radius);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(x, y, cellWidth, cellHeight);
+                }
+
+                // Draw image if exists
+                if (state.collage.images[i]) {
+                    ctx.save();
+                    if (radius) {
+                        roundRect(ctx, x, y, cellWidth, cellHeight, radius);
+                        ctx.clip();
+                    }
+                    ctx.drawImage(state.collage.images[i], x, y, cellWidth, cellHeight);
+                    ctx.restore();
+                } else {
+                    // Draw placeholder
+                    ctx.fillStyle = '#ccc';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('+', x + cellWidth / 2, y + cellHeight / 2);
+                }
+            }
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function drawSelection(ctx, elem) {
+            ctx.strokeStyle = '#ff2442';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            if (elem.type === 'text') {
+                ctx.font = `${elem.bold ? 'bold' : ''} ${elem.fontSize}px Arial`;
+                const metrics = ctx.measureText(elem.text);
+                ctx.strokeRect(elem.x - 5, elem.y - elem.fontSize, metrics.width + 10, elem.fontSize + 10);
+            } else {
+                ctx.strokeRect(elem.x - 2, elem.y - 2, elem.width + 4, elem.height + 4);
+            }
+
+            ctx.setLineDash([]);
+
+            // Draw resize handles
+            if (elem.type !== 'text') {
+                const handleSize = 8;
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = '#ff2442';
+                ctx.lineWidth = 2;
+
+                const corners = [
+                    { x: elem.x, y: elem.y },
+                    { x: elem.x + elem.width, y: elem.y },
+                    { x: elem.x, y: elem.y + elem.height },
+                    { x: elem.x + elem.width, y: elem.y + elem.height }
+                ];
+
+                corners.forEach(corner => {
+                    ctx.fillRect(corner.x - handleSize / 2, corner.y - handleSize / 2, handleSize, handleSize);
+                    ctx.strokeRect(corner.x - handleSize / 2, corner.y - handleSize / 2, handleSize, handleSize);
+                });
+            }
+        }
+
+        // ========== History (Undo/Redo) ==========
+        function saveToHistory() {
+            // Remove any future states
+            state.history = state.history.slice(0, state.historyIndex + 1);
+
+            // Save current state
+            const stateCopy = JSON.parse(JSON.stringify({
+                elements: state.elements.map(e => {
+                    if (e.type === 'image' && e.image) {
+                        return { ...e, imageData: e.image.src };
+                    }
+                    return e;
+                }),
+                background: state.background,
+                collage: state.collage
+            }));
+
+            state.history.push(stateCopy);
+            state.historyIndex = state.history.length - 1;
+
+            // Limit history size
+            if (state.history.length > 50) {
+                state.history.shift();
+                state.historyIndex--;
+            }
+
+            updateHistoryButtons();
+        }
+
+        function undo() {
+            if (state.historyIndex > 0) {
+                state.historyIndex--;
+                restoreFromHistory();
+            }
+        }
+
+        function redo() {
+            if (state.historyIndex < state.history.length - 1) {
+                state.historyIndex++;
+                restoreFromHistory();
+            }
+        }
+
+        function restoreFromHistory() {
+            const savedState = state.history[state.historyIndex];
+
+            // Restore elements
+            state.elements = savedState.elements.map(elem => {
+                if (elem.type === 'image' && elem.imageData) {
+                    const img = new Image();
+                    img.src = elem.imageData;
+                    return { ...elem, image: img };
+                }
+                return elem;
+            });
+
+            // Restore background
+            state.background = savedState.background;
+            if (state.background.type === 'image' && state.background.imageData) {
+                const img = new Image();
+                img.src = state.background.imageData;
+                state.background.image = img;
+            }
+
+            // Restore collage
+            state.collage = savedState.collage;
+
+            updateHistoryButtons();
+            updateLayerList();
+            updatePropertyPanel();
+            render();
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = state.historyIndex <= 0;
+            document.getElementById('redoBtn').disabled = state.historyIndex >= state.history.length - 1;
+        }
+
+        // ========== Save/Load ==========
+        function saveDraft() {
+            const draftData = {
+                elements: state.elements.map(e => {
+                    if (e.type === 'image' && e.image) {
+                        return { ...e, imageData: e.image.src };
+                    }
+                    return e;
+                }),
+                background: {
+                    ...state.background,
+                    imageData: state.background.type === 'image' && state.background.image ? state.background.image.src : null
+                },
+                collage: {
+                    ...state.collage,
+                    imagesData: state.collage.images.map(img => img ? img.src : null)
+                },
+                canvasSize: state.canvasSize,
+                customFonts: state.customFonts
+            };
+
+            localStorage.setItem('xiaohongshu_draft', JSON.stringify(draftData));
+            alert('草稿已保存！');
+        }
+
+        function loadDraft() {
+            const draftData = localStorage.getItem('xiaohongshu_draft');
+            if (draftData) {
+                const data = JSON.parse(draftData);
+
+                // Restore elements
+                state.elements = data.elements.map(elem => {
+                    if (elem.type === 'image' && elem.imageData) {
+                        const img = new Image();
+                        img.src = elem.imageData;
+                        return { ...elem, image: img, imageData: undefined };
+                    }
+                    return elem;
+                });
+
+                // Restore background
+                state.background = { ...data.background, imageData: undefined };
+                if (state.background.type === 'image' && data.background.imageData) {
+                    const img = new Image();
+                    img.src = data.background.imageData;
+                    state.background.image = img;
+                }
+
+                // Restore collage
+                state.collage = { ...data.collage, imagesData: undefined };
+                state.collage.images = data.collage.imagesData.map(src => {
+                    if (src) {
+                        const img = new Image();
+                        img.src = src;
+                        return img;
+                    }
+                    return null;
+                });
+
+                // Restore canvas size
+                state.canvasSize = data.canvasSize;
+                const dimensions = CANVAS_SIZES[state.canvasSize];
+                state.canvas.width = dimensions.width;
+                state.canvas.height = dimensions.height;
+
+                document.querySelectorAll('.size-option').forEach(option => {
+                    option.classList.toggle('active', option.dataset.size === state.canvasSize);
+                });
+
+                // Restore custom fonts info (not actual fonts)
+                state.customFonts = data.customFonts || [];
+
+                initCollageGrid();
+                updateLayerList();
+                render();
+                alert('草稿已加载！');
+            } else {
+                alert('没有找到保存的草稿');
+            }
+        }
+
+        // ========== Export ==========
+        function exportImage() {
+            // Create a temporary link to download
+            const link = document.createElement('a');
+            link.download = 'xiaohongshu_cover_' + Date.now() + '.png';
+            link.href = state.canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // ========== Initialize ==========
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
