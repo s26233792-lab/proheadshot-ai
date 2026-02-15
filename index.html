@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ProHeadshot AI - 美式专业证件照</title>
+    <title>AI美式照片照相馆 - 专业证件照生成</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -103,7 +103,7 @@
                     <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:rotate-12 transition-transform duration-300">
                         <i class="fa-solid fa-camera"></i>
                     </div>
-                    <span class="font-bold text-lg tracking-tight">ProHeadshot</span>
+                    <span class="font-bold text-lg tracking-tight">AI美式照相馆</span>
                 </div>
                 <div class="flex items-center gap-3">
                      <button onclick="tryOpenSettings()" class="w-8 h-8 rounded-full hover:bg-black/5 flex items-center justify-center transition-colors text-slate-500" title="设置">
@@ -320,6 +320,16 @@
                     </div>
                     <div><label class="text-xs font-bold text-slate-500 block mb-1">API Key</label><input type="password" id="api-key-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value=""></div>
                     <div><label class="text-xs font-bold text-slate-500 block mb-1">Model ID</label><input type="text" id="api-model-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value="gemini-2.0-flash-exp" oninput="updateUrlPreview()"></div>
+                    <!-- 平台自动发货配置 -->
+                    <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label class="text-xs font-bold text-slate-500 block mb-2">平台 API URL</label>
+                        <input type="text" id="platform-api-url-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" placeholder="易售/卡密网 API">
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button id="fetch-platform-codes-btn" onclick="fetchPlatformCodes()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
+                            <i class="fa-solid fa-sync mr-2"></i> 获取平台卡密
+                        </button>
+                    </div>
                     <div class="bg-slate-50 p-2 rounded-lg"><code id="url-preview" class="text-[10px] text-blue-600 break-all block"></code></div>
 
                     <div class="flex gap-2 mt-4">
@@ -404,9 +414,21 @@
     <div id="credit-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center apple-card">
             <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-ticket"></i></div>
-            <h3 class="font-bold text-lg mb-4">卡密充值</h3>
+            <h3 class="font-bold text-lg mb-4">获取验证码</h3>
+            <p class="text-xs text-slate-500 mb-3">方式一：联系客服获取验证码</p>
+            <p class="text-xs text-slate-400 mb-4">方式二：输入下方自动显示的卡密</p>
+            <div class="flex gap-2 mb-4">
+                <div class="flex-1 bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+                    <p class="text-[10px] text-slate-500 mb-1">客服微信号</p>
+                    <p class="text-xs font-bold text-blue-600">WeChat_XiaoHongShu</p>
+                </div>
+                <div class="flex-1 bg-slate-100 border border-slate-200 rounded-xl p-3 text-center">
+                    <p class="text-[10px] text-slate-500 mb-2">平台自动发货卡密</p>
+                    <p id="platform-code-display" class="text-xs font-bold text-slate-600 break-all">等待发货...</p>
+                </div>
+            </div>
             <input type="text" id="verify-code-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center mb-4 uppercase font-mono tracking-wider" placeholder="输入卡密...">
-            <button onclick="verifyCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">立即激活</button>
+            <button onclick="verifyPlatformCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">获取验证码</button>
             <button onclick="closeModal('credit-modal')" class="text-xs text-slate-400 hover:text-slate-600">取消</button>
         </div>
     </div>
@@ -429,7 +451,12 @@
             selectedRetouch: 'beautify',
             selectedClothing: 'Business Formal',
             selectedAngle: 'Front Facing',
-            abortController: null
+            abortController: null,
+            // 平台自动发货配置
+            platformApiUrl: "",
+            platformAppId: "",
+            platformAppKey: "",
+            platformAutoFetch: true
         };
 
         // ==================== 元素选择器 ====================
