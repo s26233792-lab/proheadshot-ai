@@ -50,16 +50,36 @@ exports.handler = async (event) => {
 
         const { data, error } = await supabase
           .from('verification_codes')
-          .insert({ code, points, status: 'active' })
+          .insert({
+            code,
+            points,
+            status: 'active',
+            sync_status: 'synced',
+            last_sync_at: new Date().toISOString()
+          })
           .select()
           .single();
 
         if (error) {
           console.error('插入验证码失败:', error);
+          // 即使失败也记录到数组，标记为失败状态
+          generatedCodes.push({
+            code,
+            points,
+            status: 'active',
+            sync_status: 'failed',
+            sync_error: error.message
+          });
           continue;
         }
 
-        generatedCodes.push({ code, points, status: 'active' });
+        generatedCodes.push({
+          code,
+          points,
+          status: 'active',
+          sync_status: 'synced',
+          last_sync_at: new Date().toISOString()
+        });
       }
 
       return {

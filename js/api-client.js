@@ -162,6 +162,16 @@ class ApiClient {
       body: JSON.stringify({ amount })
     });
   }
+
+  /**
+   * 重试同步单个验证码
+   */
+  async retrySyncCode(code) {
+    return this.request('/sync-code', {
+      method: 'POST',
+      body: JSON.stringify({ code: code.trim().toUpperCase() })
+    });
+  }
 }
 
 // 创建全局实例

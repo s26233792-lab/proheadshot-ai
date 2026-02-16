@@ -400,7 +400,7 @@
                         <div class="h-48 overflow-y-auto border border-slate-100 rounded-2xl bg-white text-xs shadow-sm">
                             <table class="w-full text-left">
                                 <thead class="bg-slate-50 sticky top-0 text-[10px] text-slate-500 z-10">
-                                    <tr><th class="p-3 font-bold border-b border-slate-100">卡密 (点击复制)</th><th class="p-3 font-bold border-b border-slate-100">点数</th><th class="p-3 font-bold border-b border-slate-100">状态</th></tr>
+                                    <tr><th class="p-3 font-bold border-b border-slate-100">卡密 (点击复制)</th><th class="p-3 font-bold border-b border-slate-100">点数</th><th class="p-3 font-bold border-b border-slate-100">状态</th><th class="p-3 font-bold border-b border-slate-100">同步状态</th><th class="p-3 font-bold border-b border-slate-100">操作</th></tr>
                                 </thead>
                                 <tbody id="code-list-body" class="divide-y divide-slate-50"></tbody>
                             </table>
@@ -1066,7 +1066,7 @@
             document.getElementById('code-points').value = val;
         }
 
-        function generateCodes() {
+        async function generateCodes() {
             const pts = parseInt(document.getElementById('code-points').value) || 10;
             const amt = parseInt(document.getElementById('code-amount').value) || 1;
 
@@ -1075,155 +1075,170 @@
                 return;
             }
 
-            const generated = CodeManager.generate(pts, amt);
-            if (generated.length > 0) {
-                renderCodeList();
-                showStatus(`已生成 ${amt} 张卡密`, "success");
-            } else {
-                alert('生成失败，可能是存储空间不足');
+            try {
+                const result = await apiClient.generateCodes(pts, amt, 8);
+                if (result.success) {
+                    await renderCodeList();
+                    showStatus(`已生成 ${result.count} 张卡密`, "success");
+                } else {
+                    alert('生成失败，请重试');
+                }
+            } catch (error) {
+                console.error('生成卡密失败:', error);
+                alert('生成失败: ' + error.message);
             }
         }
 
-        function renderCodeList() {
-            const codes = CodeManager.getAll();
-            const keys = Object.keys(codes).reverse();
-            els.codeTotalCount.textContent = keys.length;
+        // 获取同步状态显示
+        function getSyncStatusDisplay(syncStatus) {
+            const styles = {
+                synced: '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">🟢 已同步</span>',
+                pending: '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-600 border border-yellow-100">🟡 待同步</span>',
+                failed: '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">🔴 失败</span>'
+            };
+            return styles[syncStatus] || styles.synced;
+        }
 
-            els.codeListBody.innerHTML = ''; // 清空列表
-
-            if (keys.length === 0) {
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = '<td colspan="3" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td>';
-                els.codeListBody.appendChild(emptyRow);
-                return;
+        // 重试同步单个验证码
+        async function retrySyncCode(code) {
+            try {
+                showStatus('正在重试同步...', 'info');
+                const result = await apiClient.retrySyncCode(code);
+                if (result.success) {
+                    showStatus('同步成功: ' + code, 'success');
+                    await renderCodeList(); // 刷新列表
+                } else {
+                    showStatus('同步失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('重试同步失败:', error);
+                showStatus('同步失败: ' + error.message, 'error');
             }
+        }
 
-            keys.forEach(k => {
-                const c = codes[k];
-                const statusClass = c.status === 'active'
-                    ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
-                    : 'text-slate-400 bg-slate-50 border-slate-100';
-                const statusText = c.status === 'active' ? 'ACTIVE' : 'USED';
+        async function renderCodeList() {
+            try {
+                const result = await apiClient.getCodesList('all', 100, 0);
+                const codes = result.codes || [];
+                els.codeTotalCount.textContent = codes.filter(c => c.status === 'active').length;
 
-                // 使用 DOM 方法而不是 innerHTML，避免 XSS
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-slate-50 cursor-pointer transition-colors';
+                els.codeListBody.innerHTML = ''; // 清空列表
 
-                // 转义卡密内容以防止 XSS
-                const escapedK = k.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                if (codes.length === 0) {
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.innerHTML = '<td colspan="5" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td>';
+                    els.codeListBody.appendChild(emptyRow);
+                    return;
+                }
 
-                row.innerHTML = `
-                    <td class="p-3 font-mono text-slate-600 tracking-wide text-[11px]">${escapedK}</td>
-                    <td class="p-3 font-bold"><span class="bg-blue-50 px-2 py-0.5 rounded text-blue-700 text-[11px]">${c.points} 次</span></td>
-                    <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${statusText}</span></td>
-                `;
+                codes.forEach(c => {
+                    const statusClass = c.status === 'active'
+                        ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                        : 'text-slate-400 bg-slate-50 border-slate-100';
+                    const statusText = c.status === 'active' ? 'ACTIVE' : 'USED';
 
-                row.addEventListener('click', () => {
-                    navigator.clipboard.writeText(k);
-                    showStatus('已复制: ' + k, 'success');
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-50 transition-colors';
+
+                    const escapedCode = c.code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const syncStatus = getSyncStatusDisplay(c.sync_status || 'synced');
+                    const needsRetry = (c.sync_status === 'failed');
+
+                    row.innerHTML = `
+                        <td class="p-3 font-mono text-slate-600 tracking-wide text-[11px] cursor-pointer hover:text-blue-600" onclick="navigator.clipboard.writeText('${c.code}');showStatus('已复制: ${c.code}', 'success');">${escapedCode}</td>
+                        <td class="p-3 font-bold"><span class="bg-blue-50 px-2 py-0.5 rounded text-blue-700 text-[11px]">${c.points} 次</span></td>
+                        <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${statusText}</span></td>
+                        <td class="p-3">${syncStatus}</td>
+                        <td class="p-3">
+                            ${needsRetry ? `<button onclick="retrySyncCode('${c.code}')" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition">重试同步</button>` : '<span class="text-[10px] text-slate-300">-</span>'}
+                        </td>
+                    `;
+
+                    els.codeListBody.appendChild(row);
                 });
-
-                els.codeListBody.appendChild(row);
-            });
+            } catch (error) {
+                console.error('获取卡密列表失败:', error);
+            }
         }
 
-        function exportCodes() {
-            const codes = CodeManager.getAll();
-            const keys = Object.keys(codes);
-            if (keys.length === 0) {
-                alert('暂无数据可导出');
-                return;
-            }
+        async function exportCodes() {
+            try {
+                const result = await apiClient.getCodesList('active', 1000, 0);
+                const codes = result.codes || [];
 
-            // 只导出有效卡密
-            const activeCodes = keys.filter(k => codes[k].status === 'active');
-            if (activeCodes.length === 0) {
-                alert('没有有效卡密可导出');
-                return;
-            }
+                if (codes.length === 0) {
+                    alert('暂无数据可导出');
+                    return;
+                }
 
-            const txt = activeCodes.map(k => `${k}`).join('\n');
-            const blob = new Blob([txt], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `proheadshot_codes_${new Date().toISOString().slice(0, 10)}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showStatus(`已导出 ${activeCodes.length} 张卡密`, "success");
+                const txt = codes.map(c => c.code).join('\n');
+                const blob = new Blob([txt], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `proheadshot_codes_${new Date().toISOString().slice(0, 10)}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showStatus(`已导出 ${codes.length} 张卡密`, "success");
+            } catch (error) {
+                console.error('导出卡密失败:', error);
+                alert('导出失败: ' + error.message);
+            }
         }
 
-        function clearAllCodes() {
+        async function clearAllCodes() {
             if (confirm("警告：确定清空所有未使用的卡密吗？此操作不可恢复！")) {
                 const pwd = prompt("请输入管理员密码确认此操作：");
                 if (pwd === config.adminPwd) {
-                    CodeManager.clearAll();
-                    renderCodeList();
-                    showStatus("卡密库已清空", "success");
+                    // 提示用户去 Supabase 控制台删除
+                    alert("请在 Supabase 控制台手动删除数据：\n\n1. 打开 Supabase 控制台\n2. 进入 Table Editor\n3. 选择 verification_codes 表\n4. 删除需要清空的记录\n\n或者直接执行 SQL: DELETE FROM verification_codes WHERE status = 'active';");
                 } else {
                     alert("密码错误，操作已取消");
                 }
             }
         }
 
-        function queryCodeStatus() {
+        async function queryCodeStatus() {
             const code = prompt("请输入要查询的验证码：");
             if (!code) return;
 
-            const cleanCode = code.trim().toUpperCase();
-            const codes = CodeManager.getAll();
-
-            if (codes[cleanCode]) {
-                const codeData = codes[cleanCode];
-                const status = codeData.status === 'active' ? '可用' : '已使用';
-                const createdAt = codeData.createdAt ? new Date(codeData.createdAt).toLocaleString('zh-CN') : '未知';
-                const usedAt = codeData.usedAt ? new Date(codeData.usedAt).toLocaleString('zh-CN') : '未使用';
-
-                alert(`验证码信息：\n\n卡密：${cleanCode}\n状态：${status}\n点数：${codeData.points}\n创建时间：${createdAt}\n使用时间：${usedAt}`);
-            } else {
-                alert(`验证码 ${cleanCode} 不存在`);
+            try {
+                const result = await apiClient.checkCodeStatus(code);
+                if (result.exists) {
+                    const status = result.status === 'active' ? '可用' : '已使用';
+                    alert(`验证码信息：\n\n卡密：${code.trim().toUpperCase()}\n状态：${status}\n点数：${result.points}`);
+                } else {
+                    alert(`验证码 ${code.trim().toUpperCase()} 不存在`);
+                }
+            } catch (error) {
+                alert(`查询失败: ${error.message}`);
             }
         }
 
         // ==================== 调试工具 ====================
-        function debugCheckCodes() {
+        async function debugCheckCodes() {
             const output = document.getElementById('debug-output');
             output.classList.remove('hidden');
 
-            const codes = CodeManager.getAll();
-            const keys = Object.keys(codes);
+            try {
+                const result = await apiClient.getStats();
+                const stats = result.stats;
 
-            let html = '<div class="space-y-2">';
-            html += '<div class="text-slate-600">📊 统计信息：</div>';
-            html += `<div>总卡密数：${keys.length}</div>`;
-            html += `<div>有效卡密：${Object.values(codes).filter(c => c.status === 'active').length}</div>`;
-            html += `<div>已使用：${Object.values(codes).filter(c => c.status === 'used').length}</div>`;
-
-            // 检查重复（虽然现在不会生成了，但旧数据可能有）
-            const seen = new Set();
-            const duplicates = [];
-            keys.forEach(k => {
-                const normalized = k.toUpperCase().trim();
-                if (seen.has(normalized)) {
-                    duplicates.push(k);
-                }
-                seen.add(normalized);
-            });
-
-            if (duplicates.length > 0) {
-                html += '<div class="text-red-500 mt-2">⚠️ 发现重复卡密：</div>';
-                duplicates.forEach(d => {
-                    html += `<div class="text-red-600 ml-4">${d}</div>`;
-                });
-            } else {
-                html += '<div class="text-green-600 mt-2">✅ 未发现重复卡密</div>';
+                let html = '<div class="space-y-2">';
+                html += '<div class="text-slate-600">📊 统计信息：</div>';
+                html += `<div>总卡密数：${stats.total}</div>`;
+                html += `<div>有效卡密：${stats.active}</div>`;
+                html += `<div>已使用：${stats.used}</div>`;
+                html += `<div>总点数：${stats.total_points}</div>`;
+                html += '<div class="text-green-600 mt-2">✅ 数据已同步到 Supabase</div>';
+                html += '</div>';
+                output.innerHTML = html;
+            } catch (error) {
+                output.innerHTML = `<div class="text-red-500">获取统计数据失败: ${error.message}</div>`;
             }
-
-            html += '</div>';
-            output.innerHTML = html;
         }
 
-        function debugTestCode() {
+        async function debugTestCode() {
             const code = prompt('请输入要测试的验证码：');
             if (!code) return;
 
@@ -1231,52 +1246,38 @@
             output.classList.remove('hidden');
 
             const cleanCode = code.trim().toUpperCase();
-            const codes = CodeManager.getAll();
 
-            let html = '<div class="space-y-2">';
+            try {
+                const result = await apiClient.checkCodeStatus(code);
+                let html = '<div class="space-y-2">';
 
-            if (codes[cleanCode]) {
-                const codeData = codes[cleanCode];
-                html += `<div class="text-green-600">✅ 验证码存在</div>`;
-                html += `<div>卡密：${cleanCode}</div>`;
-                html += `<div>状态：${codeData.status === 'active' ? '🟢 有效' : '🔴 已使用'}</div>`;
-                html += `<div>点数：${codeData.points}</div>`;
-                html += `<div>创建时间：${codeData.createdAt || '未知'}</div>`;
-                if (codeData.usedAt) {
-                    html += `<div>使用时间：${codeData.usedAt}</div>`;
-                }
+                if (result.exists) {
+                    html += `<div class="text-green-600">✅ 验证码存在</div>`;
+                    html += `<div>卡密：${cleanCode}</div>`;
+                    html += `<div>状态：${result.status === 'active' ? '🟢 有效' : '🔴 已使用'}</div>`;
+                    html += `<div>点数：${result.points}</div>`;
 
-                // 模拟验证
-                html += '<div class="mt-3 pt-3 border-t border-slate-200">';
-                if (codeData.status === 'active') {
-                    html += '<div class="text-blue-600">🔍 模拟验证：此验证码有效，可以正常使用</div>';
+                    html += '<div class="mt-3 pt-3 border-t border-slate-200">';
+                    if (result.status === 'active') {
+                        html += '<div class="text-blue-600">🔍 模拟验证：此验证码有效，可以正常使用</div>';
+                    } else {
+                        html += '<div class="text-red-600">❌ 模拟验证：此验证码已使用，无法再次使用</div>';
+                    }
+                    html += '</div>';
                 } else {
-                    html += '<div class="text-red-600">❌ 模拟验证：此验证码已使用，无法再次使用</div>';
+                    html += `<div class="text-red-600">❌ 验证码不存在：${cleanCode}</div>`;
                 }
-                html += '</div>';
-            } else {
-                html += `<div class="text-red-600">❌ 验证码不存在：${cleanCode}</div>`;
-                html += `<div class="text-slate-500 text-[10px] mt-2">提示：检查大小写或格式是否正确 (格式: SK-XXXX-XXXX)</div>`;
-            }
 
-            html += '</div>';
-            output.innerHTML = html;
+                html += '</div>';
+                output.innerHTML = html;
+            } catch (error) {
+                output.innerHTML = `<div class="text-red-500">查询失败: ${error.message}</div>`;
+            }
         }
 
-        // ==================== GitHub 同步 ====================
-        async function syncFromGitHub() {
-            showStatus('正在从 GitHub 同步卡密...', 'info');
-            try {
-                const count = await CodeManager.syncFromGitHub();
-                if (count > 0) {
-                    renderCodeList();
-                    showStatus(`已从 GitHub 同步 ${count} 张卡密`, "success");
-                } else {
-                    showStatus('GitHub 上没有卡密数据', "info");
-                }
-            } catch (e) {
-                showStatus('同步失败：' + e.message, "error");
-            }
+        // ==================== 数据刷新 ====================
+        async function refreshData() {
+            await renderCodeList();
         }
 
         // ==================== 充值 ====================
@@ -1466,15 +1467,6 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
 
             // 更新 URL 预览
             updateUrlPreview();
-
-            // 自动从 GitHub 同步验证码数据（后台异步）
-            CodeManager.syncFromGitHub().then(count => {
-                if (count > 0) {
-                    log(`已从 GitHub 同步 ${count} 张验证码`);
-                }
-            }).catch(e => {
-                console.error('自动同步失败:', e);
-            });
 
             log("应用已初始化");
             log(`当前积分: ${config.credits}`);
