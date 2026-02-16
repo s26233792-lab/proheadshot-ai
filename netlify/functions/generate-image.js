@@ -18,7 +18,7 @@ exports.handler = async (event) => {
     const { imageBase64, prompt, modelId } = JSON.parse(event.body || '{}');
 
     const apiKey = process.env.GEMINI_API_KEY;
-    const apiBase = process.env.GEMINI_API_BASE || 'https://new.12ai.org/v1';
+    const apiBase = process.env.GEMINI_API_BASE || 'https://new.12ai.org';
     const model = modelId || 'gemini-3-pro-image-preview';
 
     if (!apiKey) {
@@ -26,7 +26,9 @@ exports.handler = async (event) => {
     }
 
     // 构建请求 URL
-    const baseUrl = apiBase.replace(/\/+$/, '');
+    let baseUrl = apiBase.replace(/\/+$/, '');  // 移除末尾斜杠
+    // 移除可能存在的 /v1 或 /v1beta 后缀，避免重复
+    baseUrl = baseUrl.replace(/\/v1beta$|\/v1$/, '');
     const url = `${baseUrl}/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     // 构建请求体
