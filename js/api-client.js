@@ -192,6 +192,46 @@ class ApiClient {
       body: JSON.stringify({ syncType: 'all' })
     });
   }
+
+  /**
+   * 删除单个验证码
+   */
+  async deleteCode(code) {
+    return this.request('/delete-code', {
+      method: 'POST',
+      body: JSON.stringify({ code: code.trim().toUpperCase() })
+    });
+  }
+
+  /**
+   * 批量删除验证码
+   */
+  async deleteCodes(codes) {
+    return this.request('/delete-codes/batch', {
+      method: 'POST',
+      body: JSON.stringify({ codes })
+    });
+  }
+
+  /**
+   * 按类型批量删除验证码
+   */
+  async deleteCodesByType(deleteType) {
+    return this.request('/delete-codes/batch', {
+      method: 'POST',
+      body: JSON.stringify({ deleteType })
+    });
+  }
+
+  /**
+   * 清空所有验证码
+   */
+  async clearAllCodes() {
+    return this.request('/delete-codes/batch', {
+      method: 'POST',
+      body: JSON.stringify({ deleteType: 'all' })
+    });
+  }
 }
 
 // 创建全局实例

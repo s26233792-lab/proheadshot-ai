@@ -41,6 +41,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/delete-code"
+  to = "/.netlify/functions/delete-code"
+  status = 200
+
+[[redirects]]
+  from = "/api/delete-codes/batch"
+  to = "/.netlify/functions/delete-codes-batch"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

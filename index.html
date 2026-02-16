@@ -392,6 +392,7 @@
                                 <i class="fa-solid fa-list-ul text-slate-400"></i> 有效卡密列表 (<span id="code-total-count">0</span>)
                             </h4>
                             <div class="flex gap-3 items-center">
+                                <button id="batch-delete-btn" onclick="batchDeleteSelected()" class="text-[10px] text-red-600 font-bold hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition hidden"><i class="fa-solid fa-trash-can mr-1"></i>删除选中 (<span id="selected-count">0</span>)</button>
                                 <button onclick="queryCodeStatus()" class="text-[10px] text-purple-600 font-bold hover:text-purple-700 hover:bg-purple-50 px-2 py-1 rounded transition"><i class="fa-solid fa-search mr-1"></i>查询状态</button>
                                 <button onclick="batchSyncFailedCodes()" class="text-[10px] text-amber-600 font-bold hover:text-amber-700 hover:bg-amber-50 px-2 py-1 rounded transition"><i class="fa-solid fa-rotate mr-1"></i>同步失败</button>
                                 <button onclick="exportCodes()" class="text-[10px] text-blue-600 font-bold hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded transition"><i class="fa-solid fa-file-export mr-1"></i>导出TXT</button>
@@ -401,7 +402,7 @@
                         <div class="h-48 overflow-y-auto border border-slate-100 rounded-2xl bg-white text-xs shadow-sm">
                             <table class="w-full text-left">
                                 <thead class="bg-slate-50 sticky top-0 text-[10px] text-slate-500 z-10">
-                                    <tr><th class="p-3 font-bold border-b border-slate-100">卡密 (点击复制)</th><th class="p-3 font-bold border-b border-slate-100">点数</th><th class="p-3 font-bold border-b border-slate-100">状态</th><th class="p-3 font-bold border-b border-slate-100">同步状态</th><th class="p-3 font-bold border-b border-slate-100">操作</th></tr>
+                                    <tr><th class="p-3 font-bold border-b border-slate-100 w-10"><input type="checkbox" id="select-all-codes" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" onchange="toggleSelectAll(this)"></th><th class="p-3 font-bold border-b border-slate-100">卡密 (点击复制)</th><th class="p-3 font-bold border-b border-slate-100">点数</th><th class="p-3 font-bold border-b border-slate-100">状态</th><th class="p-3 font-bold border-b border-slate-100">同步状态</th><th class="p-3 font-bold border-b border-slate-100">操作</th></tr>
                                 </thead>
                                 <tbody id="code-list-body" class="divide-y divide-slate-50"></tbody>
                             </table>
@@ -1148,7 +1149,7 @@
 
                 if (codes.length === 0) {
                     const emptyRow = document.createElement('tr');
-                    emptyRow.innerHTML = '<td colspan="5" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td>';
+                    emptyRow.innerHTML = '<td colspan="6" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td>';
                     els.codeListBody.appendChild(emptyRow);
                     return;
                 }
@@ -1161,18 +1162,23 @@
 
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-slate-50 transition-colors';
+                    row.dataset.code = c.code;
 
                     const escapedCode = c.code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     const syncStatus = getSyncStatusDisplay(c.sync_status || 'synced');
                     const needsRetry = (c.sync_status === 'failed');
 
                     row.innerHTML = `
+                        <td class="p-3"><input type="checkbox" class="code-checkbox w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" value="${c.code}" onchange="updateSelectedCount()"></td>
                         <td class="p-3 font-mono text-slate-600 tracking-wide text-[11px] cursor-pointer hover:text-blue-600" onclick="navigator.clipboard.writeText('${c.code}');showStatus('已复制: ${c.code}', 'success');">${escapedCode}</td>
                         <td class="p-3 font-bold"><span class="bg-blue-50 px-2 py-0.5 rounded text-blue-700 text-[11px]">${c.points} 次</span></td>
                         <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${statusText}</span></td>
                         <td class="p-3">${syncStatus}</td>
                         <td class="p-3">
-                            ${needsRetry ? `<button onclick="retrySyncCode('${c.code}')" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition">重试同步</button>` : '<span class="text-[10px] text-slate-300">-</span>'}
+                            <div class="flex gap-1">
+                                ${needsRetry ? `<button onclick="retrySyncCode('${c.code}')" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition">重试同步</button>` : ''}
+                                <button onclick="deleteCode('${c.code}')" class="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200 transition" title="删除">🗑️</button>
+                            </div>
                         </td>
                     `;
 
@@ -1209,14 +1215,108 @@
         }
 
         async function clearAllCodes() {
-            if (confirm("警告：确定清空所有未使用的卡密吗？此操作不可恢复！")) {
+            if (confirm("警告：确定清空所有卡密吗？此操作不可恢复！")) {
                 const pwd = prompt("请输入管理员密码确认此操作：");
                 if (pwd === config.adminPwd) {
-                    // 提示用户去 Supabase 控制台删除
-                    alert("请在 Supabase 控制台手动删除数据：\n\n1. 打开 Supabase 控制台\n2. 进入 Table Editor\n3. 选择 verification_codes 表\n4. 删除需要清空的记录\n\n或者直接执行 SQL: DELETE FROM verification_codes WHERE status = 'active';");
+                    try {
+                        showStatus('正在清空...', 'info');
+                        const result = await apiClient.clearAllCodes();
+                        if (result.success) {
+                            showStatus(result.message || '已清空所有卡密', 'success');
+                            await renderCodeList();
+                            // 重置全选复选框
+                            document.getElementById('select-all-codes').checked = false;
+                            updateSelectedCount();
+                        } else {
+                            showStatus('清空失败: ' + (result.error || '未知错误'), 'error');
+                        }
+                    } catch (error) {
+                        console.error('清空卡密失败:', error);
+                        showStatus('清空失败: ' + error.message, 'error');
+                    }
                 } else {
                     alert("密码错误，操作已取消");
                 }
+            }
+        }
+
+        // 全选/取消全选
+        function toggleSelectAll(checkbox) {
+            const checkboxes = document.querySelectorAll('.code-checkbox');
+            checkboxes.forEach(cb => cb.checked = checkbox.checked);
+            updateSelectedCount();
+        }
+
+        // 更新选中计数
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.code-checkbox:checked');
+            const count = checkboxes.length;
+            document.getElementById('selected-count').textContent = count;
+
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            if (count > 0) {
+                batchDeleteBtn.classList.remove('hidden');
+            } else {
+                batchDeleteBtn.classList.add('hidden');
+            }
+        }
+
+        // 删除单个验证码
+        async function deleteCode(code) {
+            if (!confirm(`确定要删除验证码 ${code} 吗？`)) {
+                return;
+            }
+
+            try {
+                showStatus('正在删除...', 'info');
+                const result = await apiClient.deleteCode(code);
+                if (result.success) {
+                    showStatus(result.message || '删除成功', 'success');
+                    await renderCodeList();
+                } else {
+                    showStatus('删除失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showStatus('删除失败: ' + error.message, 'error');
+            }
+        }
+
+        // 批量删除选中的验证码
+        async function batchDeleteSelected() {
+            const checkboxes = document.querySelectorAll('.code-checkbox:checked');
+            const codes = Array.from(checkboxes).map(cb => cb.value);
+
+            if (codes.length === 0) {
+                alert('请先选择要删除的验证码');
+                return;
+            }
+
+            if (!confirm(`确定要删除选中的 ${codes.length} 张验证码吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            const pwd = prompt("请输入管理员密码确认此操作：");
+            if (pwd !== config.adminPwd) {
+                alert("密码错误，操作已取消");
+                return;
+            }
+
+            try {
+                showStatus('正在批量删除...', 'info');
+                const result = await apiClient.deleteCodes(codes);
+                if (result.success) {
+                    showStatus(result.message || `已删除 ${codes.length} 张验证码`, 'success');
+                    // 重置全选复选框
+                    document.getElementById('select-all-codes').checked = false;
+                    await renderCodeList();
+                    updateSelectedCount();
+                } else {
+                    showStatus('批量删除失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('批量删除失败:', error);
+                showStatus('批量删除失败: ' + error.message, 'error');
             }
         }
 
