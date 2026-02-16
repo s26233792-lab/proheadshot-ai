@@ -572,37 +572,23 @@
             redeem: async (code) => {
                 if (!code || typeof code !== 'string') return 0;
 
-                const cleanCode = code.trim().toUpperCase();
-                let codes = CodeManager.getAll();
-
-                // 检查本地卡密是否存在
-                if (codes[cleanCode]) {
-                    const codeData = codes[cleanCode];
-
-                    // 检查状态
-                    if (codeData.status !== 'active') {
-                        return 0; // 已使用或无效
-                    }
-
-                    const points = codeData.points;
-
-                    // ���记为已使用
-                    codes[cleanCode].status = 'used';
-                    codes[cleanCode].usedAt = new Date().toISOString();
-
-                    CodeManager.save(codes);
-
-                    return points;
+                try {
+                    const result = await apiClient.verifyCode(code);
+                    return result.points || 0;
+                } catch (error) {
+                    console.error('验证码验证失败:', error);
+                    return 0;
                 }
-
-                return 0; // 无效卡密
             },
 
             // 检查卡密状态（不消费）
-            checkStatus: (code) => {
-                const cleanCode = code.trim().toUpperCase();
-                const codes = CodeManager.getAll();
-                return codes[cleanCode] ? codes[cleanCode].status : null;
+            checkStatus: async (code) => {
+                try {
+                    const result = await apiClient.checkCodeStatus(code);
+                    return result.status || null;
+                } catch (error) {
+                    return null;
+                }
             },
 
             // 清空所有卡密
@@ -1489,5 +1475,6 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
         // 启动
         init();
     </script>
+    <script src="js/api-client.js"></script>
 </body>
 </html>

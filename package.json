@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AI美式照片照相馆 - 专业证件照生成",
   "dependencies": {
-    "pg": "^8.11.3"
+    "pg": "^8.11.3",
+    "@supabase/supabase-js": "^2.39.0"
   }
 }

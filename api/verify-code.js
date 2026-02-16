@@ -2,7 +2,7 @@
  * 验证码验证 API
  */
 
-const { Pool } = require('pg');
+const { supabase } = require('./supabase-client.js');
 
 module.exports = async (req, res) => {
   // CORS headers
@@ -24,70 +24,65 @@ module.exports = async (req, res) => {
       }
 
       const cleanCode = code.trim().toUpperCase();
-      const POSTGRES_URL = process.env.POSTGRES_URL;
 
-      if (!POSTGRES_URL) {
-        return res.status(500).json({ error: '数据库未配置' });
+      // 查询验证码
+      const { data: codeData, error: queryError } = await supabase
+        .from('verification_codes')
+        .select('points, status')
+        .eq('code', cleanCode)
+        .single();
+
+      if (queryError || !codeData) {
+        return res.status(404).json({ error: '验证码不存在' });
       }
 
-      const pool = new Pool({ connectionString: POSTGRES_URL });
-
-      try {
-        await pool.query('BEGIN');
-
-        const result = await pool.query(
-          'SELECT points, status FROM verification_codes WHERE code = $1 FOR UPDATE',
-          [cleanCode]
-        );
-
-        if (result.rows.length === 0) {
-          await pool.query('ROLLBACK');
-          await pool.end();
-          return res.status(404).json({ error: '验证码不存在' });
-        }
-
-        const codeData = result.rows[0];
-
-        if (codeData.status !== 'active') {
-          await pool.query('ROLLBACK');
-          await pool.end();
-          return res.status(400).json({ error: '验证码已使用' });
-        }
-
-        const points = codeData.points;
-
-        await pool.query(
-          'UPDATE verification_codes SET status = $1, used_at = NOW() WHERE code = $2',
-          ['used', cleanCode]
-        );
-
-        await pool.query(
-          'INSERT INTO usage_logs (code, points, device_id) VALUES ($1, $2, $3)',
-          [cleanCode, points, deviceId || null]
-        );
-
-        if (deviceId) {
-          await pool.query(
-            `INSERT INTO user_credits (device_id, credits) VALUES ($1, $2)
-             ON CONFLICT (device_id) DO UPDATE SET credits = user_credits.credits + $2, updated_at = NOW()`,
-            [deviceId, points]
-          );
-        }
-
-        await pool.query('COMMIT');
-        await pool.end();
-
-        return res.json({
-          success: true,
-          points,
-          message: `验证成功，+${points} 点数`
-        });
-
-      } catch (error) {
-        await pool.query('ROLLBACK');
-        await pool.end();
-        throw error;
+      if (codeData.status !== 'active') {
+        return res.status(400).json({ error: '验证码已使用' });
       }
+
+      const points = codeData.points;
+
+      // 更新验证码状态
+      const { error: updateError } = await supabase
+        .from('verification_codes')
+        .update({ status: 'used', used_at: new Date().toISOString() })
+        .eq('code', cleanCode);
+
+      if (updateError) throw updateError;
+
+      // 记录使用日志
+      const { error: logError } = await supabase
+        .from('usage_logs')
+        .insert({ code: cleanCode, points, device_id: deviceId });
+
+      if (logError) console.error('记录日志失败:', logError);
+
+      // 更新用户积分
+      if (deviceId) {
+        // 使用 upsert 来插入或更新积分
+        const { data: existingCredit } = await supabase
+          .from('user_credits')
+          .select('credits')
+          .eq('device_id', deviceId)
+          .single();
+
+        if (existingCredit) {
+          await supabase
+            .from('user_credits')
+            .update({ credits: existingCredit.credits + points, updated_at: new Date().toISOString() })
+            .eq('device_id', deviceId);
+        } else {
+          await supabase
+            .from('user_credits')
+            .insert({ device_id: deviceId, credits: points });
+        }
+      }
+
+      return res.json({
+        success: true,
+        points,
+        message: `验证成功，+${points} 点数`
+      });
 
     } catch (error) {
       console.error('验证失败:', error);
@@ -104,29 +99,21 @@ module.exports = async (req, res) => {
       }
 
       const cleanCode = code.trim().toUpperCase();
-      const POSTGRES_URL = process.env.POSTGRES_URL;
 
-      if (!POSTGRES_URL) {
-        return res.status(500).json({ error: '数据库未配置' });
-      }
+      const { data, error } = await supabase
+        .from('verification_codes')
+        .select('status, points, created_at')
+        .eq('code', cleanCode)
+        .single();
 
-      const pool = new Pool({ connectionString: POSTGRES_URL });
-
-      const result = await pool.query(
-        'SELECT status, points, created_at FROM verification_codes WHERE code = $1',
-        [cleanCode]
-      );
-
-      await pool.end();
-
-      if (result.rows.length === 0) {
+      if (error || !data) {
         return res.status(404).json({ exists: false });
       }
 
       return res.json({
         exists: true,
-        status: result.rows[0].status,
-        points: result.rows[0].points
+        status: data.status,
+        points: data.points
       });
 
     } catch (error) {

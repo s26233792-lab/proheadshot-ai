@@ -2,7 +2,7 @@
  * 统计数据 API
  */
 
-const { Pool } = require('pg');
+const { supabase } = require('./supabase-client.js');
 
 module.exports = async (req, res) => {
   // CORS headers
@@ -20,33 +20,35 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const POSTGRES_URL = process.env.POSTGRES_URL;
-    if (!POSTGRES_URL) {
-      return res.status(500).json({ error: '数据库未配置' });
-    }
+    // 获取验证码统计
+    const { data: statsData, error: statsError } = await supabase
+      .from('verification_codes')
+      .select('status, points');
 
-    const pool = new Pool({ connectionString: POSTGRES_URL });
+    if (statsError) throw statsError;
 
-    const statsResult = await pool.query(`
-      SELECT
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'active') as active,
-        COUNT(*) FILTER (WHERE status = 'used') as used,
-        COALESCE(SUM(points) FILTER (WHERE status = 'active'), 0) as total_points
-      FROM verification_codes
-    `);
+    // 手动计算统计数据
+    const stats = {
+      total: statsData.length,
+      active: statsData.filter(d => d.status === 'active').length,
+      used: statsData.filter(d => d.status === 'used').length,
+      total_points: statsData.filter(d => d.status === 'active').reduce((sum, d) => sum + (d.points || 0), 0)
+    };
 
-    const todayResult = await pool.query(`
-      SELECT COUNT(*) as today_used
-      FROM usage_logs
-      WHERE DATE(created_at) = CURRENT_DATE
-    `);
+    // 获取今日使用统计
+    const today = new Date().toISOString().split('T')[0];
+    const { data: todayData, error: todayError } = await supabase
+      .from('usage_logs')
+      .select('*')
+      .gte('created_at', today);
 
-    await pool.end();
+    if (todayError) throw todayError;
 
     return res.json({
-      stats: statsResult.rows[0],
-      today: todayResult.rows[0]
+      stats,
+      today: {
+        today_used: todayData ? todayData.length : 0
+      }
     });
 
   } catch (error) {
