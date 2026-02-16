@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>导入验证码</title></head>
+<body>
+<h2>导入验证码到 Supabase</h2>
+<button id="btn" onclick="doImport()">点击导入</button>
+<pre id="result"></pre>
+<script>
+function doImport() {
+  document.getElementById("btn").disabled = true;
+  document.getElementById("result").textContent = "导入中...";
+  var codes = {
+    "SK-RYXU-W68G": {"points": 10, "status": "active"},
+    "SK-9E1R-CP4T": {"points": 1, "status": "active"}
+  };
+  fetch("/api/import-codes", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({codes: codes})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    document.getElementById("result").textContent = JSON.stringify(d, null, 2);
+    return fetch("/api/stats");
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    document.getElementById("result").textContent += "\n\n--- 当前统计 ---\n" + JSON.stringify(d, null, 2);
+  })
+  .catch(function(e) {
+    document.getElementById("result").textContent = "出错了: " + e.message;
+  });
+}
+</script>
+</body>
+</html>
