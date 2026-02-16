@@ -393,6 +393,7 @@
                             </h4>
                             <div class="flex gap-3 items-center">
                                 <button onclick="queryCodeStatus()" class="text-[10px] text-purple-600 font-bold hover:text-purple-700 hover:bg-purple-50 px-2 py-1 rounded transition"><i class="fa-solid fa-search mr-1"></i>查询状态</button>
+                                <button onclick="batchSyncFailedCodes()" class="text-[10px] text-amber-600 font-bold hover:text-amber-700 hover:bg-amber-50 px-2 py-1 rounded transition"><i class="fa-solid fa-rotate mr-1"></i>同步失败</button>
                                 <button onclick="exportCodes()" class="text-[10px] text-blue-600 font-bold hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded transition"><i class="fa-solid fa-file-export mr-1"></i>导出TXT</button>
                                 <button onclick="clearAllCodes()" class="text-[10px] text-red-500 font-bold hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition"><i class="fa-solid fa-trash mr-1"></i>清空所有</button>
                             </div>
@@ -1113,6 +1114,27 @@
             } catch (error) {
                 console.error('重试同步失败:', error);
                 showStatus('同步失败: ' + error.message, 'error');
+            }
+        }
+
+        // 批量同步失败的验证码
+        async function batchSyncFailedCodes() {
+            try {
+                const confirmed = confirm('确定要同步所有失败的验证码吗？');
+                if (!confirmed) return;
+
+                showStatus('正在批量同步...', 'info');
+                const result = await apiClient.batchSyncFailedCodes();
+
+                if (result.success) {
+                    showStatus(`批量同步完成！成功: ${result.synced}, 失败: ${result.failed}`, 'success');
+                    await renderCodeList(); // 刷新列表
+                } else {
+                    showStatus('批量同步失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('批量同步失败:', error);
+                showStatus('批量同步失败: ' + error.message, 'error');
             }
         }
 

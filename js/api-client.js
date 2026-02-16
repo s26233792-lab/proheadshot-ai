@@ -172,6 +172,26 @@ class ApiClient {
       body: JSON.stringify({ code: code.trim().toUpperCase() })
     });
   }
+
+  /**
+   * 批量同步失败的验证码
+   */
+  async batchSyncFailedCodes() {
+    return this.request('/sync-codes/batch', {
+      method: 'POST',
+      body: JSON.stringify({ syncType: 'failed' })
+    });
+  }
+
+  /**
+   * 同步所有验证码
+   */
+  async syncAllCodes() {
+    return this.request('/sync-codes/batch', {
+      method: 'POST',
+      body: JSON.stringify({ syncType: 'all' })
+    });
+  }
 }
 
 // 创建全局实例

@@ -36,6 +36,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/sync-codes/batch"
+  to = "/.netlify/functions/sync-codes-batch"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
