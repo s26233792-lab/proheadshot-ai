@@ -310,9 +310,16 @@
             <div class="flex-1 overflow-y-auto pr-2">
                 <!-- API Config -->
                 <div id="tab-api-config" class="space-y-4">
+                    <!-- 代理模���提示 -->
+                    <div id="proxy-notice" class="bg-green-50 p-3 rounded-xl border border-green-100 mb-4">
+                        <p class="text-xs text-green-700">
+                            <i class="fa-solid fa-check-circle mr-1"></i>
+                            API 已通过后端代理配置，用户无需手动设置。下方配置仅供调试使用。
+                        </p>
+                    </div>
                     <div>
                         <label class="text-xs font-bold text-slate-500 block mb-1">API Base URL</label>
-                        <input type="text" id="api-base-url-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value="https://new.12ai.org/v1" oninput="updateUrlPreview()">
+                        <input type="text" id="api-base-url-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value="https://new.12ai.org" oninput="updateUrlPreview()">
                         <div class="flex items-center gap-2 mt-2">
                             <input type="checkbox" id="auto-clean-path" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" checked onchange="updateUrlPreview()">
                             <label for="auto-clean-path" class="text-[11px] text-slate-500 font-medium cursor-pointer select-none">自动优化路径 (移除 /v1, /v1beta)</label>
@@ -329,12 +336,6 @@
                         <button id="fetch-platform-codes-btn" onclick="fetchPlatformCodes()" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
                             <i class="fa-solid fa-sync mr-2"></i> 获取平台卡密
                         </button>
-                    </div>
-                    <!-- GitHub 同步配置 -->
-                    <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <label class="text-xs font-bold text-slate-500 block mb-2">GitHub Token</label>
-                        <input type="password" id="github-token-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" placeholder="ghp_xxxxxxxx（用于同步验证码状态）">
-                        <p class="text-[10px] text-slate-400 mt-1">在 GitHub Settings → Developer settings → Personal access tokens 生成</p>
                     </div>
                     <div class="bg-slate-50 p-2 rounded-lg"><code id="url-preview" class="text-[10px] text-blue-600 break-all block"></code></div>
 
@@ -398,11 +399,9 @@
                                 <i class="fa-solid fa-list-ul text-slate-400"></i> 有效卡密列表 (<span id="code-total-count">0</span>)
                             </h4>
                             <div class="flex gap-3 items-center">
-                                <!-- 同步��态指示器 -->
-                                <span id="sync-status" class="text-[10px] px-2 py-1 rounded bg-slate-100 text-slate-500 flex items-center gap-1">
-                                    <i class="fa-solid fa-circle-minus"></i> 未同步
-                                </span>
-                                <button onclick="syncFromGitHub()" class="text-[10px] text-green-600 font-bold hover:text-green-700 hover:bg-green-50 px-2 py-1 rounded transition"><i class="fa-solid fa-cloud-download-alt mr-1"></i>从GitHub同步</button>
+                                <button id="batch-delete-btn" onclick="batchDeleteSelected()" class="text-[10px] text-red-600 font-bold hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition hidden"><i class="fa-solid fa-trash-can mr-1"></i>删除选中 (<span id="selected-count">0</span>)</button>
+                                <button onclick="queryCodeStatus()" class="text-[10px] text-purple-600 font-bold hover:text-purple-700 hover:bg-purple-50 px-2 py-1 rounded transition"><i class="fa-solid fa-search mr-1"></i>查询状态</button>
+                                <button onclick="batchSyncFailedCodes()" class="text-[10px] text-amber-600 font-bold hover:text-amber-700 hover:bg-amber-50 px-2 py-1 rounded transition"><i class="fa-solid fa-rotate mr-1"></i>同步失败</button>
                                 <button onclick="exportCodes()" class="text-[10px] text-blue-600 font-bold hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded transition"><i class="fa-solid fa-file-export mr-1"></i>导出TXT</button>
                                 <button onclick="clearAllCodes()" class="text-[10px] text-red-500 font-bold hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition"><i class="fa-solid fa-trash mr-1"></i>清空所有</button>
                             </div>
@@ -410,7 +409,7 @@
                         <div class="h-48 overflow-y-auto border border-slate-100 rounded-2xl bg-white text-xs shadow-sm">
                             <table class="w-full text-left">
                                 <thead class="bg-slate-50 sticky top-0 text-[10px] text-slate-500 z-10">
-                                    <tr><th class="p-3 font-bold border-b border-slate-100">卡密 (点击复制)</th><th class="p-3 font-bold border-b border-slate-100">点数</th><th class="p-3 font-bold border-b border-slate-100">状态</th></tr>
+                                    <tr><th class="p-3 font-bold border-b border-slate-100 w-10"><input type="checkbox" id="select-all-codes" class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" onchange="toggleSelectAll(this)"></th><th class="p-3 font-bold border-b border-slate-100">卡密 (点击复制)</th><th class="p-3 font-bold border-b border-slate-100">点数</th><th class="p-3 font-bold border-b border-slate-100">状态</th><th class="p-3 font-bold border-b border-slate-100">同步状态</th><th class="p-3 font-bold border-b border-slate-100">操作</th></tr>
                                 </thead>
                                 <tbody id="code-list-body" class="divide-y divide-slate-50"></tbody>
                             </table>
@@ -428,7 +427,7 @@
                                     <i class="fa-solid fa-search mr-1"></i>检查重复
                                 </button>
                                 <button onclick="debugTestCode()" class="flex-1 bg-white border border-orange-300 text-orange-600 py-2 rounded-xl text-xs font-bold hover:bg-orange-50 transition">
-                                    <i class="fa-solid fa-vial mr-1"></i>测试验证码
+                                    <i class="fa-solid fa-vial mr-1"></i>测试卡密
                                 </button>
                             </div>
                             <div id="debug-output" class="bg-white border border-orange-200 rounded-xl p-3 text-[10px] font-mono max-h-32 overflow-y-auto hidden">
@@ -444,10 +443,10 @@
     <div id="credit-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center apple-card">
             <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-ticket"></i></div>
-            <h3 class="font-bold text-lg mb-4">获取验证码</h3>
-            <p class="text-xs text-slate-500 mb-4">请输入小红书客服发你的验证码，点击确认即可生成</p>
+            <h3 class="font-bold text-lg mb-4">充值点数</h3>
+            <p class="text-xs text-slate-500 mb-4">请输入卡密进行充值，充值后即可生成证件照</p>
             <input type="text" id="verify-code-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center mb-4 uppercase font-mono tracking-wider" placeholder="输入卡密...">
-            <button onclick="verifyCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">确认生成</button>
+            <button onclick="verifyCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">确认充值</button>
             <button onclick="closeModal('credit-modal')" class="text-xs text-slate-400 hover:text-slate-600">取消</button>
         </div>
     </div>
@@ -460,6 +459,7 @@
             baseUrl: "https://new.12ai.org/v1",
             modelId: "gemini-3-pro-image-preview",
             autoCleanPath: true,
+            useProxy: true, // 启用后端代理模式
             adminPwd: "terry_su",
             isAdmin: false,
             credits: 0,
@@ -476,10 +476,6 @@
             platformAppId: "",
             platformAppKey: "",
             platformAutoFetch: true,
-            // GitHub 同步配置
-            githubToken: "",
-            githubOwner: "s26233792-lab",
-            githubRepo: "proheadshot-ai",
             // 安全配置
             loginAttempts: 0,
             maxLoginAttempts: 3,
@@ -538,10 +534,6 @@
                 try {
                     localStorage.setItem(CodeManager.getKey(), JSON.stringify(codes));
                     localStorage.setItem('proheadshot_codes_update', Date.now().toString());
-                    // 标记为待同步
-                    if (config.githubToken) {
-                        updateSyncStatus('pending');
-                    }
                     return true;
                 } catch (e) {
                     console.error('保存卡密数据失败:', e);
@@ -566,8 +558,8 @@
                         code = 'SK-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
                         attempts++;
                         if (attempts >= maxAttempts) {
-                            console.error('无法生成唯一验证码，已尝试100次');
-                            alert('生成验证码时遇到重复，请重试');
+                            console.error('无法生成唯一卡密，已尝试100次');
+                            alert('生成卡密时遇到重复，请重试');
                             return generated; // 返回已生成的部分
                         }
                     } while (codes[code]); // 检查是否已存在
@@ -581,84 +573,32 @@
                 }
 
                 if (CodeManager.save(codes)) {
-                    // 自动同步到 GitHub（异步，不阻塞）
-                    CodeManager.syncToGitHub().catch(e => console.error('自动同步到 GitHub 失败:', e));
                     return generated;
                 }
                 return [];
             },
 
-            // 验证并兑换卡密（支持本地和GitHub远程验证）
+            // 验证并兑换卡密
             redeem: async (code) => {
                 if (!code || typeof code !== 'string') return 0;
 
-                const cleanCode = code.trim().toUpperCase();
-                let codes = CodeManager.getAll();
-
-                // 检查本地卡密是否存在
-                if (codes[cleanCode]) {
-                    const codeData = codes[cleanCode];
-
-                    // 检查状态
-                    if (codeData.status !== 'active') {
-                        return 0; // 已使用或无效
-                    }
-
-                    const points = codeData.points;
-
-                    // 标记为已使用
-                    codes[cleanCode].status = 'used';
-                    codes[cleanCode].usedAt = new Date().toISOString();
-
-                    CodeManager.save(codes);
-
-                    // 异步同步到 GitHub（不阻塞）
-                    CodeManager.syncToGitHub().catch(e => console.error('同步到 GitHub 失败:', e));
-
-                    return points;
-                }
-
-                // 本地没有，尝试从 GitHub 获取
                 try {
-                    const githubCodes = await CodeManager.syncFromGitHub();
-                    if (githubCodes > 0) {
-                        // 重新获取本地数据（syncFromGitHub 会合并到本地）
-                        codes = CodeManager.getAll();
-
-                        if (codes[cleanCode]) {
-                            const codeData = codes[cleanCode];
-
-                            // 检查状态
-                            if (codeData.status !== 'active') {
-                                return 0; // 已使用或无效
-                            }
-
-                            const points = codeData.points;
-
-                            // 标记为已使用
-                            codes[cleanCode].status = 'used';
-                            codes[cleanCode].usedAt = new Date().toISOString();
-
-                            CodeManager.save(codes);
-
-                            // 异步同步到 GitHub（不阻塞）
-                            CodeManager.syncToGitHub().catch(e => console.error('同步到 GitHub 失败:', e));
-
-                            return points;
-                        }
-                    }
-                } catch (e) {
-                    console.error('从 GitHub 验证卡密失败:', e);
+                    const result = await apiClient.verifyCode(code);
+                    return result.points || 0;
+                } catch (error) {
+                    console.error('卡密验证失败:', error);
+                    return 0;
                 }
-
-                return 0; // 无效卡密
             },
 
             // 检查卡密状态（不消费）
-            checkStatus: (code) => {
-                const cleanCode = code.trim().toUpperCase();
-                const codes = CodeManager.getAll();
-                return codes[cleanCode] ? codes[cleanCode].status : null;
+            checkStatus: async (code) => {
+                try {
+                    const result = await apiClient.checkCodeStatus(code);
+                    return result.status || null;
+                } catch (error) {
+                    return null;
+                }
             },
 
             // 清空所有卡密
@@ -678,32 +618,7 @@
                 };
             },
 
-            // ==================== GitHub 同步功能 ====================
-            // 从 GitHub 同步卡密数据
-            syncFromGitHub: async () => {
-                try {
-                    updateSyncStatus('syncing');
-                    const response = await fetch('https://cdn.jsdelivr.net/gh/s26233792-lab/proheadshot-ai@main/codes.json?t=' + Date.now());
-                    if (!response.ok) throw new Error('获取失败');
-
-                    const githubCodes = await response.json();
-                    const localCodes = CodeManager.getAll();
-
-                    // 合并数据：GitHub 优先
-                    const mergedCodes = { ...localCodes, ...githubCodes };
-                    CodeManager.save(mergedCodes);
-
-                    updateSyncStatus('synced');
-                    localStorage.setItem('proheadshot_last_sync', Date.now().toString());
-                    return Object.keys(githubCodes).length;
-                } catch (e) {
-                    console.error('从 GitHub 同步失败:', e);
-                    updateSyncStatus('failed');
-                    return 0;
-                }
-            },
-
-            // 导出卡密到 codes.json（需要管理员手动提交）
+            // 导出卡密到 codes.json
             exportToFile: () => {
                 const codes = CodeManager.getAll();
                 const json = JSON.stringify(codes, null, 2);
@@ -715,117 +630,27 @@
                 a.click();
                 URL.revokeObjectURL(url);
                 return Object.keys(codes).length;
-            },
-
-            // 同步卡密数据到 GitHub
-            syncToGitHub: async () => {
-                if (!config.githubToken) {
-                    console.warn('未配置 GitHub Token，跳过同步');
-                    updateSyncStatus('not_configured');
-                    return false;
-                }
-
-                updateSyncStatus('syncing');
-
-                try {
-                    const codes = CodeManager.getAll();
-                    const content = JSON.stringify(codes, null, 2);
-                    const contentBase64 = btoa(unescape(encodeURIComponent(content)));
-
-                    // 首先获取当前文件的 SHA
-                    const getResponse = await fetch(`https://api.github.com/repos/${config.githubOwner}/${config.githubRepo}/contents/codes.json`, {
-                        headers: {
-                            'Authorization': `token ${config.githubToken}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    });
-
-                    let sha = null;
-                    if (getResponse.ok) {
-                        const fileData = await getResponse.json();
-                        sha = fileData.sha;
-                    }
-
-                    // 更新或创建文件
-                    const putResponse = await fetch(`https://api.github.com/repos/${config.githubOwner}/${config.githubRepo}/contents/codes.json`, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${config.githubToken}`,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/vnd.github.v3+json'
-                        },
-                        body: JSON.stringify({
-                            message: '更新验证码数据',
-                            content: contentBase64,
-                            sha: sha
-                        })
-                    });
-
-                    if (putResponse.ok) {
-                        console.log('验证码数据已同步到 GitHub');
-                        updateSyncStatus('synced');
-                        // 保存同步时间
-                        localStorage.setItem('proheadshot_last_sync', Date.now().toString());
-                        return true;
-                    } else {
-                        const error = await putResponse.json();
-                        console.error('同步到 GitHub 失败:', error);
-                        updateSyncStatus('failed');
-                        return false;
-                    }
-                } catch (e) {
-                    console.error('同步到 GitHub 出错:', e);
-                    updateSyncStatus('failed');
-                    return false;
-                }
             }
         };
-
-        // ==================== 同步状态管理 ====================
-        const syncStatusElement = document.getElementById('sync-status');
-        const syncStatusConfig = {
-            not_configured: { icon: 'fa-circle-xmark', text: '未配置', bg: 'bg-slate-100', text_color: 'text-slate-500' },
-            syncing: { icon: 'fa-circle-notch fa-spin', text: '同步中...', bg: 'bg-blue-100', text_color: 'text-blue-600' },
-            synced: { icon: 'fa-circle-check', text: '已同步', bg: 'bg-green-100', text_color: 'text-green-600' },
-            failed: { icon: 'fa-circle-exclamation', text: '同步失败', bg: 'bg-red-100', text_color: 'text-red-600' },
-            pending: { icon: 'fa-clock', text: '待同步', bg: 'bg-orange-100', text_color: 'text-orange-600' }
-        };
-
-        function updateSyncStatus(status) {
-            const config = syncStatusConfig[status] || syncStatusConfig.pending;
-            syncStatusElement.className = `text-[10px] px-2 py-1 rounded ${config.bg} ${config.text_color} flex items-center gap-1`;
-            syncStatusElement.innerHTML = `<i class="fa-solid ${config.icon}"></i> ${config.text}`;
-        }
-
-        function checkSyncStatus() {
-            if (!config.githubToken) {
-                updateSyncStatus('not_configured');
-                return;
-            }
-
-            const lastSync = localStorage.getItem('proheadshot_last_sync');
-            if (lastSync) {
-                const lastLocalUpdate = localStorage.getItem('proheadshot_codes_update');
-                if (lastLocalUpdate && parseInt(lastLocalUpdate) > parseInt(lastSync)) {
-                    updateSyncStatus('pending');
-                } else {
-                    updateSyncStatus('synced');
-                }
-            } else {
-                updateSyncStatus('pending');
-            }
-        }
 
         // ==================== 用户积分系统 ====================
         const CreditManager = {
             getKey: () => 'proheadshot_user_credits',
 
-            // 获取用户积分
-            get: () => {
+            // 获取用户积分（从服务器获取）
+            get: async () => {
                 try {
+                    const result = await apiClient.getCredits();
+                    const credits = result.credits || 0;
+                    // 同时更新本地缓存
+                    localStorage.setItem(CreditManager.getKey(), credits.toString());
+                    config.credits = credits;
+                    updateCreditDisplay();
+                    return credits;
+                } catch (error) {
+                    // 降级到本地存储
+                    console.error('获取积分失败，使用本地缓存:', error);
                     return parseInt(localStorage.getItem(CreditManager.getKey()) || '0');
-                } catch (e) {
-                    return 0;
                 }
             },
 
@@ -842,14 +667,14 @@
             },
 
             // 增加积分
-            add: (points) => {
-                const current = CreditManager.get();
+            add: async (points) => {
+                const current = await CreditManager.get();
                 return CreditManager.set(current + points);
             },
 
             // 扣除积分
-            deduct: (points) => {
-                const current = CreditManager.get();
+            deduct: async (points) => {
+                const current = await CreditManager.get();
                 if (current >= points) {
                     return CreditManager.set(current - points);
                 }
@@ -899,6 +724,12 @@
 
             // 生成图片
             generateImage: async (imageBase64, prompt, signal) => {
+                // 如果启用代理模式，使用后端代理
+                if (config.useProxy) {
+                    return await apiClient.generateImageProxy(imageBase64, prompt, config.modelId, signal);
+                }
+
+                // 原有的直接调用 API 逻辑
                 const url = APIManager.getUrl();
 
                 // 构建请求体
@@ -982,7 +813,7 @@
             els.creditNav.textContent = config.credits;
             if (!config.isGenerating) {
                 if (config.credits <= 0) {
-                    els.genBtn.innerHTML = `<span>获取生成次数</span> <i class="fa-solid fa-key ml-2"></i>`;
+                    els.genBtn.innerHTML = `<span>充值点数</span> <i class="fa-solid fa-key ml-2"></i>`;
                     els.genBtn.className = "w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center";
                 } else {
                     els.genBtn.innerHTML = `<span>生成证件照</span> <i class="fa-solid fa-wand-magic-sparkles ml-2"></i>`;
@@ -1117,7 +948,6 @@
                 document.getElementById('api-base-url-input').value = config.baseUrl;
                 document.getElementById('api-model-input').value = config.modelId;
                 document.getElementById('api-key-input').value = config.userKey;
-                document.getElementById('github-token-input').value = config.githubToken || '';
                 els.autoCleanCheck.checked = config.autoCleanPath;
                 updateUrlPreview();
             } else {
@@ -1186,7 +1016,6 @@
             config.baseUrl = document.getElementById('api-base-url-input').value.trim();
             config.modelId = document.getElementById('api-model-input').value.trim();
             config.autoCleanPath = els.autoCleanCheck.checked;
-            config.githubToken = document.getElementById('github-token-input').value.trim();
 
             // 保存到 localStorage
             try {
@@ -1194,16 +1023,12 @@
                     userKey: config.userKey,
                     baseUrl: config.baseUrl,
                     modelId: config.modelId,
-                    autoCleanPath: config.autoCleanPath,
-                    githubToken: config.githubToken
+                    autoCleanPath: config.autoCleanPath
                 }));
             } catch (e) {}
 
             closeModal('settings-modal');
             showStatus("配置已保存", "success");
-
-            // 检查同步状态
-            checkSyncStatus();
         }
 
         function loadSettings() {
@@ -1215,7 +1040,6 @@
                     if (data.baseUrl) config.baseUrl = data.baseUrl;
                     if (data.modelId) config.modelId = data.modelId;
                     if (typeof data.autoCleanPath === 'boolean') config.autoCleanPath = data.autoCleanPath;
-                    if (data.githubToken) config.githubToken = data.githubToken;
                 }
             } catch (e) {}
 
@@ -1223,6 +1047,18 @@
             if (config.isAdmin) {
                 checkSyncStatus();
             }
+        }
+
+        // ==================== 同步状态检查 ====================
+        function checkSyncStatus() {
+            // 代理模式下无需检查同步状态，由服务器处理
+            if (config.useProxy) {
+                console.log('代理模式已启用，同步状态由服务器处理');
+            }
+        }
+
+        function fetchPlatformCodes() {
+            showStatus('平台卡密功能暂未实现', 'normal');
         }
 
         async function testConnection() {
@@ -1258,7 +1094,7 @@
             document.getElementById('code-points').value = val;
         }
 
-        function generateCodes() {
+        async function generateCodes() {
             const pts = parseInt(document.getElementById('code-points').value) || 10;
             const amt = parseInt(document.getElementById('code-amount').value) || 1;
 
@@ -1267,189 +1103,329 @@
                 return;
             }
 
-            const generated = CodeManager.generate(pts, amt);
-            if (generated.length > 0) {
-                renderCodeList();
-                showStatus(`已生成 ${amt} 张卡密`, "success");
-            } else {
-                alert('生成失败，可能是存储空间不足');
+            try {
+                const result = await apiClient.generateCodes(pts, amt, 8);
+                if (result.success) {
+                    await renderCodeList();
+                    showStatus(`已生成 ${result.count} 张卡密`, "success");
+                } else {
+                    showStatus('生成失败，请重试', 'error');
+                }
+            } catch (error) {
+                console.error('生成卡密失败:', error);
+                showStatus('生成失败: ' + error.message, 'error');
             }
         }
 
-        function renderCodeList() {
-            const codes = CodeManager.getAll();
-            const keys = Object.keys(codes).reverse();
-            els.codeTotalCount.textContent = keys.length;
+        // 获取同步状态显示
+        function getSyncStatusDisplay(syncStatus) {
+            const styles = {
+                synced: '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">🟢 已同步</span>',
+                pending: '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-600 border border-yellow-100">🟡 待同步</span>',
+                failed: '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">🔴 失败</span>'
+            };
+            return styles[syncStatus] || styles.synced;
+        }
 
-            els.codeListBody.innerHTML = ''; // 清空列表
-
-            if (keys.length === 0) {
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = '<td colspan="3" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td>';
-                els.codeListBody.appendChild(emptyRow);
-                return;
+        // 重试同步单个卡密
+        async function retrySyncCode(code) {
+            try {
+                showStatus('正在重试同步...', 'info');
+                const result = await apiClient.retrySyncCode(code);
+                if (result.success) {
+                    showStatus('同步成功: ' + code, 'success');
+                    await renderCodeList(); // 刷新列表
+                } else {
+                    showStatus('同步失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('重试同步失败:', error);
+                showStatus('同步失败: ' + error.message, 'error');
             }
+        }
 
-            keys.forEach(k => {
-                const c = codes[k];
-                const statusClass = c.status === 'active'
-                    ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
-                    : 'text-slate-400 bg-slate-50 border-slate-100';
-                const statusText = c.status === 'active' ? 'ACTIVE' : 'USED';
+        // 批量同步失败的卡密
+        async function batchSyncFailedCodes() {
+            try {
+                const confirmed = confirm('确定要同步所有失败的卡密吗？');
+                if (!confirmed) return;
 
-                // 使用 DOM 方法而不是 innerHTML，避免 XSS
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-slate-50 cursor-pointer transition-colors';
+                showStatus('正在批量同步...', 'info');
+                const result = await apiClient.batchSyncFailedCodes();
 
-                // 转义卡密内容以防止 XSS
-                const escapedK = k.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                if (result.success) {
+                    showStatus(`批量同步完成！成功: ${result.synced}, 失败: ${result.failed}`, 'success');
+                    await renderCodeList(); // 刷新列表
+                } else {
+                    showStatus('批量同步失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('批量同步失败:', error);
+                showStatus('批量同步失败: ' + error.message, 'error');
+            }
+        }
 
-                row.innerHTML = `
-                    <td class="p-3 font-mono text-slate-600 tracking-wide text-[11px]">${escapedK}</td>
-                    <td class="p-3 font-bold"><span class="bg-blue-50 px-2 py-0.5 rounded text-blue-700 text-[11px]">${c.points} 次</span></td>
-                    <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${statusText}</span></td>
-                `;
+        async function renderCodeList() {
+            try {
+                const result = await apiClient.getCodesList('all', 100, 0);
+                const codes = result.codes || [];
+                els.codeTotalCount.textContent = codes.filter(c => c.status === 'active').length;
 
-                row.addEventListener('click', () => {
-                    navigator.clipboard.writeText(k);
-                    showStatus('已复制: ' + k, 'success');
+                els.codeListBody.innerHTML = ''; // 清空列表
+
+                if (codes.length === 0) {
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.innerHTML = '<td colspan="6" class="p-8 text-center text-slate-300 italic">暂无可用卡密，请在上方生成</td>';
+                    els.codeListBody.appendChild(emptyRow);
+                    return;
+                }
+
+                codes.forEach(c => {
+                    const statusClass = c.status === 'active'
+                        ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                        : 'text-slate-400 bg-slate-50 border-slate-100';
+                    const statusText = c.status === 'active' ? 'ACTIVE' : 'USED';
+
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-50 transition-colors';
+                    row.dataset.code = c.code;
+
+                    const escapedCode = c.code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const syncStatus = getSyncStatusDisplay(c.sync_status || 'synced');
+                    const needsRetry = (c.sync_status === 'failed');
+
+                    row.innerHTML = `
+                        <td class="p-3"><input type="checkbox" class="code-checkbox w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" value="${c.code}" onchange="updateSelectedCount()"></td>
+                        <td class="p-3 font-mono text-slate-600 tracking-wide text-[11px] cursor-pointer hover:text-blue-600" onclick="navigator.clipboard.writeText('${c.code}');showStatus('已复制: ${c.code}', 'success');">${escapedCode}</td>
+                        <td class="p-3 font-bold"><span class="bg-blue-50 px-2 py-0.5 rounded text-blue-700 text-[11px]">${c.points} 次</span></td>
+                        <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${statusText}</span></td>
+                        <td class="p-3">${syncStatus}</td>
+                        <td class="p-3">
+                            <div class="flex gap-1">
+                                ${needsRetry ? `<button onclick="retrySyncCode('${c.code}')" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition">重试同步</button>` : ''}
+                                <button onclick="deleteCode('${c.code}')" class="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200 transition" title="删除">🗑️</button>
+                            </div>
+                        </td>
+                    `;
+
+                    els.codeListBody.appendChild(row);
                 });
-
-                els.codeListBody.appendChild(row);
-            });
+            } catch (error) {
+                console.error('获取卡密列表失败:', error);
+            }
         }
 
-        function exportCodes() {
-            const codes = CodeManager.getAll();
-            const keys = Object.keys(codes);
-            if (keys.length === 0) {
-                alert('暂无数据可导出');
-                return;
-            }
+        async function exportCodes() {
+            try {
+                const result = await apiClient.getCodesList('active', 1000, 0);
+                const codes = result.codes || [];
 
-            // 只导出有效卡密
-            const activeCodes = keys.filter(k => codes[k].status === 'active');
-            if (activeCodes.length === 0) {
-                alert('没有有效卡密可导出');
-                return;
-            }
+                if (codes.length === 0) {
+                    alert('暂无数据可导出');
+                    return;
+                }
 
-            const txt = activeCodes.map(k => `${k}`).join('\n');
-            const blob = new Blob([txt], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `proheadshot_codes_${new Date().toISOString().slice(0, 10)}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showStatus(`已导出 ${activeCodes.length} 张卡密`, "success");
+                const txt = codes.map(c => c.code).join('\n');
+                const blob = new Blob([txt], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `proheadshot_codes_${new Date().toISOString().slice(0, 10)}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showStatus(`已导出 ${codes.length} 张卡密`, "success");
+            } catch (error) {
+                console.error('导出卡密失败:', error);
+                alert('导出失败: ' + error.message);
+            }
         }
 
-        function clearAllCodes() {
-            if (confirm("警告：确定清空所有未使用的卡密吗？此操作不可恢��！")) {
+        async function clearAllCodes() {
+            if (confirm("警告：确定清空所有卡密吗？此操作不可恢复！")) {
                 const pwd = prompt("请输入管理员密码确认此操作：");
                 if (pwd === config.adminPwd) {
-                    CodeManager.clearAll();
-                    renderCodeList();
-                    showStatus("卡密库已清空", "success");
+                    try {
+                        showStatus('正在清空...', 'info');
+                        const result = await apiClient.clearAllCodes();
+                        if (result.success) {
+                            showStatus(result.message || '已清空所有卡密', 'success');
+                            await renderCodeList();
+                            // 重置全选复选框
+                            document.getElementById('select-all-codes').checked = false;
+                            updateSelectedCount();
+                        } else {
+                            showStatus('清空失败: ' + (result.error || '未知错误'), 'error');
+                        }
+                    } catch (error) {
+                        console.error('清空卡密失败:', error);
+                        showStatus('清空失败: ' + error.message, 'error');
+                    }
                 } else {
                     alert("密码错误，操作已取消");
                 }
             }
         }
 
+        // 全选/取消全选
+        function toggleSelectAll(checkbox) {
+            const checkboxes = document.querySelectorAll('.code-checkbox');
+            checkboxes.forEach(cb => cb.checked = checkbox.checked);
+            updateSelectedCount();
+        }
+
+        // 更新选中计数
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.code-checkbox:checked');
+            const count = checkboxes.length;
+            document.getElementById('selected-count').textContent = count;
+
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            if (count > 0) {
+                batchDeleteBtn.classList.remove('hidden');
+            } else {
+                batchDeleteBtn.classList.add('hidden');
+            }
+        }
+
+        // 删除单个卡密
+        async function deleteCode(code) {
+            if (!confirm(`确定要删除卡密 ${code} 吗？`)) {
+                return;
+            }
+
+            try {
+                showStatus('正在删除...', 'info');
+                const result = await apiClient.deleteCode(code);
+                if (result.success) {
+                    showStatus(result.message || '删除成功', 'success');
+                    await renderCodeList();
+                } else {
+                    showStatus('删除失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showStatus('删除失败: ' + error.message, 'error');
+            }
+        }
+
+        // 批量删除选中的卡密
+        async function batchDeleteSelected() {
+            const checkboxes = document.querySelectorAll('.code-checkbox:checked');
+            const codes = Array.from(checkboxes).map(cb => cb.value);
+
+            if (codes.length === 0) {
+                alert('请先选择要删除的卡密');
+                return;
+            }
+
+            if (!confirm(`确定要删除选中的 ${codes.length} 张卡密吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            const pwd = prompt("请输入管理员密码确认此操作：");
+            if (pwd !== config.adminPwd) {
+                alert("密码错误，操作已取消");
+                return;
+            }
+
+            try {
+                showStatus('正在批量删除...', 'info');
+                const result = await apiClient.deleteCodes(codes);
+                if (result.success) {
+                    showStatus(result.message || `已删除 ${codes.length} 张卡密`, 'success');
+                    // 重置全选复选框
+                    document.getElementById('select-all-codes').checked = false;
+                    await renderCodeList();
+                    updateSelectedCount();
+                } else {
+                    showStatus('批量删除失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('批量删除失败:', error);
+                showStatus('批量删除失败: ' + error.message, 'error');
+            }
+        }
+
+        async function queryCodeStatus() {
+            const code = prompt("请输入要查询的卡密：");
+            if (!code) return;
+
+            try {
+                const result = await apiClient.checkCodeStatus(code);
+                if (result.exists) {
+                    const status = result.status === 'active' ? '可用' : '已使用';
+                    alert(`卡密信息：\n\n卡密：${code.trim().toUpperCase()}\n状态：${status}\n点数：${result.points}`);
+                } else {
+                    alert(`卡密 ${code.trim().toUpperCase()} 不存在`);
+                }
+            } catch (error) {
+                showStatus(`查询失败: ${error.message}`, 'error');
+            }
+        }
+
         // ==================== 调试工具 ====================
-        function debugCheckCodes() {
+        async function debugCheckCodes() {
             const output = document.getElementById('debug-output');
             output.classList.remove('hidden');
 
-            const codes = CodeManager.getAll();
-            const keys = Object.keys(codes);
+            try {
+                const result = await apiClient.getStats();
+                const stats = result.stats;
 
-            let html = '<div class="space-y-2">';
-            html += '<div class="text-slate-600">📊 统计信息：</div>';
-            html += `<div>总卡密数：${keys.length}</div>`;
-            html += `<div>有效卡密：${Object.values(codes).filter(c => c.status === 'active').length}</div>`;
-            html += `<div>已使用：${Object.values(codes).filter(c => c.status === 'used').length}</div>`;
-
-            // 检查重复（虽然现在不会生成了，但旧数据可能有）
-            const seen = new Set();
-            const duplicates = [];
-            keys.forEach(k => {
-                const normalized = k.toUpperCase().trim();
-                if (seen.has(normalized)) {
-                    duplicates.push(k);
-                }
-                seen.add(normalized);
-            });
-
-            if (duplicates.length > 0) {
-                html += '<div class="text-red-500 mt-2">⚠️ 发现重复卡密：</div>';
-                duplicates.forEach(d => {
-                    html += `<div class="text-red-600 ml-4">${d}</div>`;
-                });
-            } else {
-                html += '<div class="text-green-600 mt-2">✅ 未发现重复卡密</div>';
+                let html = '<div class="space-y-2">';
+                html += '<div class="text-slate-600">📊 统计信息：</div>';
+                html += `<div>总卡密数：${stats.total}</div>`;
+                html += `<div>有效卡密：${stats.active}</div>`;
+                html += `<div>已使用：${stats.used}</div>`;
+                html += `<div>总点数：${stats.total_points}</div>`;
+                html += '<div class="text-green-600 mt-2">✅ 数据已同步到 Supabase</div>';
+                html += '</div>';
+                output.innerHTML = html;
+            } catch (error) {
+                output.innerHTML = `<div class="text-red-500">获取统计数据失败: ${error.message}</div>`;
             }
-
-            html += '</div>';
-            output.innerHTML = html;
         }
 
-        function debugTestCode() {
-            const code = prompt('请输入要测试的验证码：');
+        async function debugTestCode() {
+            const code = prompt('请输入要测试的卡密：');
             if (!code) return;
 
             const output = document.getElementById('debug-output');
             output.classList.remove('hidden');
 
             const cleanCode = code.trim().toUpperCase();
-            const codes = CodeManager.getAll();
 
-            let html = '<div class="space-y-2">';
+            try {
+                const result = await apiClient.checkCodeStatus(code);
+                let html = '<div class="space-y-2">';
 
-            if (codes[cleanCode]) {
-                const codeData = codes[cleanCode];
-                html += `<div class="text-green-600">✅ 验证码存在</div>`;
-                html += `<div>卡密：${cleanCode}</div>`;
-                html += `<div>状态：${codeData.status === 'active' ? '🟢 有效' : '🔴 已使用'}</div>`;
-                html += `<div>点数：${codeData.points}</div>`;
-                html += `<div>创建时间：${codeData.createdAt || '未知'}</div>`;
-                if (codeData.usedAt) {
-                    html += `<div>使用时间：${codeData.usedAt}</div>`;
-                }
+                if (result.exists) {
+                    html += `<div class="text-green-600">✅ 卡密存在</div>`;
+                    html += `<div>卡密：${cleanCode}</div>`;
+                    html += `<div>状态：${result.status === 'active' ? '🟢 有效' : '🔴 已使用'}</div>`;
+                    html += `<div>点数：${result.points}</div>`;
 
-                // 模拟验证
-                html += '<div class="mt-3 pt-3 border-t border-slate-200">';
-                if (codeData.status === 'active') {
-                    html += '<div class="text-blue-600">🔍 模拟验证：此验证码有效，可以正常使用</div>';
+                    html += '<div class="mt-3 pt-3 border-t border-slate-200">';
+                    if (result.status === 'active') {
+                        html += '<div class="text-blue-600">🔍 模拟验证：此卡密有效，可以正常使用</div>';
+                    } else {
+                        html += '<div class="text-red-600">❌ 模拟验证：此卡密已使用，无法再次使用</div>';
+                    }
+                    html += '</div>';
                 } else {
-                    html += '<div class="text-red-600">❌ 模拟验证：此验证码已使用，无法再次使用</div>';
+                    html += `<div class="text-red-600">❌ 卡密不存在：${cleanCode}</div>`;
                 }
-                html += '</div>';
-            } else {
-                html += `<div class="text-red-600">❌ 验证码不存在：${cleanCode}</div>`;
-                html += `<div class="text-slate-500 text-[10px] mt-2">提示：检查大小写或格式是否正确 (格式: SK-XXXX-XXXX)</div>`;
-            }
 
-            html += '</div>';
-            output.innerHTML = html;
+                html += '</div>';
+                output.innerHTML = html;
+            } catch (error) {
+                output.innerHTML = `<div class="text-red-500">查询失败: ${error.message}</div>`;
+            }
         }
 
-        // ==================== GitHub 同步 ====================
-        async function syncFromGitHub() {
-            showStatus('正在从 GitHub 同步卡密...', 'info');
-            try {
-                const count = await CodeManager.syncFromGitHub();
-                if (count > 0) {
-                    renderCodeList();
-                    showStatus(`已从 GitHub 同步 ${count} 张卡密`, "success");
-                } else {
-                    showStatus('GitHub 上没有卡密数据', "info");
-                }
-            } catch (e) {
-                showStatus('同步失败：' + e.message, "error");
-            }
+        // ==================== 数据刷新 ====================
+        async function refreshData() {
+            await renderCodeList();
         }
 
         // ==================== 充值 ====================
@@ -1472,16 +1448,16 @@
                 const points = await CodeManager.redeem(code);
 
                 if (points > 0) {
-                    CreditManager.add(points);
+                    await CreditManager.add(points);
                     closeModal('credit-modal');
                     showStatus(`充值成功 +${points} 点数`, "success");
                     input.value = '';
                 } else {
-                    alert('无效或已使用的卡密');
+                    showStatus('卡密无效或已使用，请检查', 'error');
                 }
             } catch (e) {
                 console.error('验证卡密失败:', e);
-                alert('验证失败，请检查网络连接');
+                showStatus('充值失败，请检查网络连接', 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -1510,8 +1486,8 @@
                 return;
             }
 
-            // 检查 API 配置
-            if (!config.userKey && !config.apiKey) {
+            // 检查 API 配置（仅非代理模式需要检查）
+            if (!config.useProxy && !config.userKey && !config.apiKey) {
                 showStatus("请先配置 API Key", "error");
                 tryOpenSettings();
                 return;
@@ -1577,13 +1553,14 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
                 els.downloadBtn.disabled = false;
 
                 // 扣除积分
-                CreditManager.deduct(1);
+                await CreditManager.deduct(1);
 
                 els.progressBar.style.width = '100%';
                 els.percentText.textContent = '100%';
                 document.getElementById('loading-tip').textContent = '生成完成！';
 
                 log("生成成功");
+                showStatus('生成成功！已消耗 1 点数', 'success');
 
                 setTimeout(() => {
                     els.loading.classList.add('hidden');
@@ -1627,8 +1604,8 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
             // 加载保存的配置
             loadSettings();
 
-            // 加载用户积分
-            config.credits = CreditManager.get();
+            // 加载用户积分（从服务器获取）
+            config.credits = await CreditManager.get();
             updateCreditDisplay();
 
             // 填充设置表单
@@ -1640,15 +1617,6 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
             // 更新 URL 预览
             updateUrlPreview();
 
-            // 自动从 GitHub 同步验证码数据（后台异步）
-            CodeManager.syncFromGitHub().then(count => {
-                if (count > 0) {
-                    log(`已从 GitHub 同步 ${count} 张验证码`);
-                }
-            }).catch(e => {
-                console.error('自动同步失败:', e);
-            });
-
             log("应用已初始化");
             log(`当前积分: ${config.credits}`);
         }
@@ -1656,5 +1624,6 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
         // 启动
         init();
     </script>
+    <script src="js/api-client.js"></script>
 </body>
 </html>
