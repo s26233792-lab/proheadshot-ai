@@ -232,6 +232,37 @@ class ApiClient {
       body: JSON.stringify({ deleteType: 'all' })
     });
   }
+
+  /**
+   * 通过代理生成图片
+   */
+  async generateImageProxy(imageBase64, prompt, modelId, signal) {
+    const url = `${this.baseURL}/api/generate-image`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, prompt, modelId }),
+        signal: signal
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || '请求失败');
+      }
+
+      const data = await response.json();
+      if (data.success && data.imageData) {
+        return data.imageData;
+      }
+
+      throw new Error(data.error || '未收到图片数据');
+    } catch (error) {
+      console.error('代理生成图片失败:', error);
+      throw error;
+    }
+  }
 }
 
 // 创建全局实例

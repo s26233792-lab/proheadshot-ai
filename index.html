@@ -452,6 +452,7 @@
             baseUrl: "https://new.12ai.org/v1",
             modelId: "gemini-3-pro-image-preview",
             autoCleanPath: true,
+            useProxy: true, // 启用后端代理模式
             adminPwd: "terry_su",
             isAdmin: false,
             credits: 0,
@@ -716,6 +717,12 @@
 
             // 生成图片
             generateImage: async (imageBase64, prompt, signal) => {
+                // 如果启用代理模式，使用后端代理
+                if (config.useProxy) {
+                    return await apiClient.generateImageProxy(imageBase64, prompt, config.modelId, signal);
+                }
+
+                // 原有的直接调用 API 逻辑
                 const url = APIManager.getUrl();
 
                 // 构建请求体
