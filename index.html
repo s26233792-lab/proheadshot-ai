@@ -627,12 +627,20 @@
         const CreditManager = {
             getKey: () => 'proheadshot_user_credits',
 
-            // 获取用户积分
-            get: () => {
+            // 获取用户积分（从服务器获取）
+            get: async () => {
                 try {
+                    const result = await apiClient.getCredits();
+                    const credits = result.credits || 0;
+                    // 同时更新本地缓存
+                    localStorage.setItem(CreditManager.getKey(), credits.toString());
+                    config.credits = credits;
+                    updateCreditDisplay();
+                    return credits;
+                } catch (error) {
+                    // 降级到本地存储
+                    console.error('获取积分失败，使用本地缓存:', error);
                     return parseInt(localStorage.getItem(CreditManager.getKey()) || '0');
-                } catch (e) {
-                    return 0;
                 }
             },
 
@@ -649,14 +657,14 @@
             },
 
             // 增加积分
-            add: (points) => {
-                const current = CreditManager.get();
+            add: async (points) => {
+                const current = await CreditManager.get();
                 return CreditManager.set(current + points);
             },
 
             // 扣除积分
-            deduct: (points) => {
-                const current = CreditManager.get();
+            deduct: async (points) => {
+                const current = await CreditManager.get();
                 if (current >= points) {
                     return CreditManager.set(current - points);
                 }
@@ -1291,7 +1299,7 @@
                 const points = await CodeManager.redeem(code);
 
                 if (points > 0) {
-                    CreditManager.add(points);
+                    await CreditManager.add(points);
                     closeModal('credit-modal');
                     showStatus(`充值成功 +${points} 点数`, "success");
                     input.value = '';
@@ -1396,7 +1404,7 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
                 els.downloadBtn.disabled = false;
 
                 // 扣除积分
-                CreditManager.deduct(1);
+                await CreditManager.deduct(1);
 
                 els.progressBar.style.width = '100%';
                 els.percentText.textContent = '100%';
@@ -1446,8 +1454,8 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
             // 加载保存的配置
             loadSettings();
 
-            // 加载用户积分
-            config.credits = CreditManager.get();
+            // 加载用户积分（从服务器获取）
+            config.credits = await CreditManager.get();
             updateCreditDisplay();
 
             // 填充设置表单
