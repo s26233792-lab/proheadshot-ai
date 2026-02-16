@@ -319,7 +319,7 @@
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-500 block mb-1">API Base URL</label>
-                        <input type="text" id="api-base-url-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value="https://new.12ai.org/v1" oninput="updateUrlPreview()">
+                        <input type="text" id="api-base-url-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono" value="https://new.12ai.org" oninput="updateUrlPreview()">
                         <div class="flex items-center gap-2 mt-2">
                             <input type="checkbox" id="auto-clean-path" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" checked onchange="updateUrlPreview()">
                             <label for="auto-clean-path" class="text-[11px] text-slate-500 font-medium cursor-pointer select-none">自动优化路径 (移除 /v1, /v1beta)</label>
@@ -1047,6 +1047,18 @@
             if (config.isAdmin) {
                 checkSyncStatus();
             }
+        }
+
+        // ==================== 同步状态检查 ====================
+        function checkSyncStatus() {
+            // 代理模式下无需检查同步状态，由服务器处理
+            if (config.useProxy) {
+                console.log('代理模式已启用，同步状态由服务器处理');
+            }
+        }
+
+        function fetchPlatformCodes() {
+            showStatus('平台卡密功能暂未实现', 'normal');
         }
 
         async function testConnection() {
