@@ -23,7 +23,7 @@ class ApiClient {
   }
 
   generateDeviceId() {
-    // 基于浏览器特征生成设备指纹
+    // 基于浏览器特征生成设备指纹（稳定，不随时间变化）
     const features = [
       navigator.userAgent,
       navigator.language,
@@ -38,7 +38,8 @@ class ApiClient {
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash;
     }
-    return Math.abs(hash).toString(36) + Date.now().toString(36);
+    // 移除 Date.now()，使用稳定的设备 ID
+    return 'device_' + Math.abs(hash).toString(36);
   }
 
   /**
