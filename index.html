@@ -427,7 +427,7 @@
                                     <i class="fa-solid fa-search mr-1"></i>检查重复
                                 </button>
                                 <button onclick="debugTestCode()" class="flex-1 bg-white border border-orange-300 text-orange-600 py-2 rounded-xl text-xs font-bold hover:bg-orange-50 transition">
-                                    <i class="fa-solid fa-vial mr-1"></i>测试验证码
+                                    <i class="fa-solid fa-vial mr-1"></i>测试卡密
                                 </button>
                             </div>
                             <div id="debug-output" class="bg-white border border-orange-200 rounded-xl p-3 text-[10px] font-mono max-h-32 overflow-y-auto hidden">
@@ -443,10 +443,10 @@
     <div id="credit-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center apple-card">
             <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-ticket"></i></div>
-            <h3 class="font-bold text-lg mb-4">获取验证码</h3>
-            <p class="text-xs text-slate-500 mb-4">请输入小红书客服发你的验证码，点击确认即可生成</p>
+            <h3 class="font-bold text-lg mb-4">充值点数</h3>
+            <p class="text-xs text-slate-500 mb-4">请输入卡密进行充值，充值后即可生成证件照</p>
             <input type="text" id="verify-code-input" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-center mb-4 uppercase font-mono tracking-wider" placeholder="输入卡密...">
-            <button onclick="verifyCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">确认生成</button>
+            <button onclick="verifyCode()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold mb-2 shadow-lg shadow-amber-100 transition hover:bg-amber-600 active:scale-95">确认充值</button>
             <button onclick="closeModal('credit-modal')" class="text-xs text-slate-400 hover:text-slate-600">取消</button>
         </div>
     </div>
@@ -558,8 +558,8 @@
                         code = 'SK-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
                         attempts++;
                         if (attempts >= maxAttempts) {
-                            console.error('无法生成唯一验证码，已尝试100次');
-                            alert('生成验证码时遇到重复，请重试');
+                            console.error('无法生成唯一卡密，已尝试100次');
+                            alert('生成卡密时遇到重复，请重试');
                             return generated; // 返回已生成的部分
                         }
                     } while (codes[code]); // 检查是否已存在
@@ -586,7 +586,7 @@
                     const result = await apiClient.verifyCode(code);
                     return result.points || 0;
                 } catch (error) {
-                    console.error('验证码验证失败:', error);
+                    console.error('卡密验证失败:', error);
                     return 0;
                 }
             },
@@ -813,7 +813,7 @@
             els.creditNav.textContent = config.credits;
             if (!config.isGenerating) {
                 if (config.credits <= 0) {
-                    els.genBtn.innerHTML = `<span>获取生成次数</span> <i class="fa-solid fa-key ml-2"></i>`;
+                    els.genBtn.innerHTML = `<span>充值点数</span> <i class="fa-solid fa-key ml-2"></i>`;
                     els.genBtn.className = "w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center";
                 } else {
                     els.genBtn.innerHTML = `<span>生成证件照</span> <i class="fa-solid fa-wand-magic-sparkles ml-2"></i>`;
@@ -1097,11 +1097,11 @@
                     await renderCodeList();
                     showStatus(`已生成 ${result.count} 张卡密`, "success");
                 } else {
-                    alert('生成失败，请重试');
+                    showStatus('生成失败，请重试', 'error');
                 }
             } catch (error) {
                 console.error('生成卡密失败:', error);
-                alert('生成失败: ' + error.message);
+                showStatus('生成失败: ' + error.message, 'error');
             }
         }
 
@@ -1115,7 +1115,7 @@
             return styles[syncStatus] || styles.synced;
         }
 
-        // 重试同步单个验证码
+        // 重试同步单个卡密
         async function retrySyncCode(code) {
             try {
                 showStatus('正在重试同步...', 'info');
@@ -1132,10 +1132,10 @@
             }
         }
 
-        // 批量同步失败的验证码
+        // 批量同步失败的卡密
         async function batchSyncFailedCodes() {
             try {
-                const confirmed = confirm('确定要同步所有失败的验证码吗？');
+                const confirmed = confirm('确定要同步所有失败的卡密吗？');
                 if (!confirmed) return;
 
                 showStatus('正在批量同步...', 'info');
@@ -1275,9 +1275,9 @@
             }
         }
 
-        // 删除单个验证码
+        // 删除单个卡密
         async function deleteCode(code) {
-            if (!confirm(`确定要删除验证码 ${code} 吗？`)) {
+            if (!confirm(`确定要删除卡密 ${code} 吗？`)) {
                 return;
             }
 
@@ -1296,17 +1296,17 @@
             }
         }
 
-        // 批量删除选中的验证码
+        // 批量删除选中的卡密
         async function batchDeleteSelected() {
             const checkboxes = document.querySelectorAll('.code-checkbox:checked');
             const codes = Array.from(checkboxes).map(cb => cb.value);
 
             if (codes.length === 0) {
-                alert('请先选择要删除的验证码');
+                alert('请先选择要删除的卡密');
                 return;
             }
 
-            if (!confirm(`确定要删除选中的 ${codes.length} 张验证码吗？此操作不可恢复！`)) {
+            if (!confirm(`确定要删除选中的 ${codes.length} 张卡密吗？此操作不可恢复！`)) {
                 return;
             }
 
@@ -1320,7 +1320,7 @@
                 showStatus('正在批量删除...', 'info');
                 const result = await apiClient.deleteCodes(codes);
                 if (result.success) {
-                    showStatus(result.message || `已删除 ${codes.length} 张验证码`, 'success');
+                    showStatus(result.message || `已删除 ${codes.length} 张卡密`, 'success');
                     // 重置全选复选框
                     document.getElementById('select-all-codes').checked = false;
                     await renderCodeList();
@@ -1335,19 +1335,19 @@
         }
 
         async function queryCodeStatus() {
-            const code = prompt("请输入要查询的验证码：");
+            const code = prompt("请输入要查询的卡密：");
             if (!code) return;
 
             try {
                 const result = await apiClient.checkCodeStatus(code);
                 if (result.exists) {
                     const status = result.status === 'active' ? '可用' : '已使用';
-                    alert(`验证码信息：\n\n卡密：${code.trim().toUpperCase()}\n状态：${status}\n点数：${result.points}`);
+                    alert(`卡密信息：\n\n卡密：${code.trim().toUpperCase()}\n状态：${status}\n点数：${result.points}`);
                 } else {
-                    alert(`验证码 ${code.trim().toUpperCase()} 不存在`);
+                    alert(`卡密 ${code.trim().toUpperCase()} 不存在`);
                 }
             } catch (error) {
-                alert(`查询失败: ${error.message}`);
+                showStatus(`查询失败: ${error.message}`, 'error');
             }
         }
 
@@ -1375,7 +1375,7 @@
         }
 
         async function debugTestCode() {
-            const code = prompt('请输入要测试的验证码：');
+            const code = prompt('请输入要测试的卡密：');
             if (!code) return;
 
             const output = document.getElementById('debug-output');
@@ -1388,20 +1388,20 @@
                 let html = '<div class="space-y-2">';
 
                 if (result.exists) {
-                    html += `<div class="text-green-600">✅ 验证码存在</div>`;
+                    html += `<div class="text-green-600">✅ 卡密存在</div>`;
                     html += `<div>卡密：${cleanCode}</div>`;
                     html += `<div>状态：${result.status === 'active' ? '🟢 有效' : '🔴 已使用'}</div>`;
                     html += `<div>点数：${result.points}</div>`;
 
                     html += '<div class="mt-3 pt-3 border-t border-slate-200">';
                     if (result.status === 'active') {
-                        html += '<div class="text-blue-600">🔍 模拟验证：此验证码有效，可以正常使用</div>';
+                        html += '<div class="text-blue-600">🔍 模拟验证：此卡密有效，可以正常使用</div>';
                     } else {
-                        html += '<div class="text-red-600">❌ 模拟验证：此验证码已使用，无法再次使用</div>';
+                        html += '<div class="text-red-600">❌ 模拟验证：此卡密已使用，无法再次使用</div>';
                     }
                     html += '</div>';
                 } else {
-                    html += `<div class="text-red-600">❌ 验证码不存在：${cleanCode}</div>`;
+                    html += `<div class="text-red-600">❌ 卡密不存在：${cleanCode}</div>`;
                 }
 
                 html += '</div>';
@@ -1441,11 +1441,11 @@
                     showStatus(`充值成功 +${points} 点数`, "success");
                     input.value = '';
                 } else {
-                    alert('无效或已使用的卡密');
+                    showStatus('卡密无效或已使用，请检查', 'error');
                 }
             } catch (e) {
                 console.error('验证卡密失败:', e);
-                alert('验证失败，请检查网络连接');
+                showStatus('充值失败，请检查网络连接', 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -1548,6 +1548,7 @@ CRITICAL: Preserve facial features, ethnicity, and identity. Do not change the p
                 document.getElementById('loading-tip').textContent = '生成完成！';
 
                 log("生成成功");
+                showStatus('生成成功！已消耗 1 点数', 'success');
 
                 setTimeout(() => {
                     els.loading.classList.add('hidden');
